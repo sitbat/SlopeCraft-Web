@@ -2,7 +2,7 @@
 
 [中文](README.md) | **English**
 
-[Source repository](https://github.com/sitbat/SlopeCraftWeb)
+[Source repository](https://github.com/sitbat/SlopeCraft-Web)
 
 A static browser application for creating Minecraft map art. Based on [SlopeCraft](https://github.com/SlopeCraft/SlopeCraft) 5.4.1, it retains the original C++ conversion, structure-building and export algorithms, compiled to WebAssembly with SIMD and pthreads.
 

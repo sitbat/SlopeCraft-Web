@@ -1,7 +1,7 @@
 # Security policy
 
 This policy covers the independent
-[SlopeCraft Web repository](https://github.com/sitbat/SlopeCraftWeb), whose history
+[SlopeCraft Web repository](https://github.com/sitbat/SlopeCraft-Web), whose history
 starts with the initial Web snapshot. Source attribution and the upstream
 baseline are documented in [UPSTREAM.md](UPSTREAM.md). The original SlopeCraft
 project and its authors retain ownership of their upstream code;

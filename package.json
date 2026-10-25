@@ -3,9 +3,9 @@
   "version": "5.4.1-web.1",
   "private": true,
   "description": "A static Minecraft map-art web application powered by SlopeCraft C++ and multithreaded WebAssembly.",
-  "repository": {"type":"git","url":"https://github.com/sitbat/SlopeCraftWeb.git"},
-  "homepage": "https://github.com/sitbat/SlopeCraftWeb#readme",
-  "bugs": {"url":"https://github.com/sitbat/SlopeCraftWeb/issues"},
+  "repository": {"type":"git","url":"https://github.com/sitbat/SlopeCraft-Web.git"},
+  "homepage": "https://github.com/sitbat/SlopeCraft-Web#readme",
+  "bugs": {"url":"https://github.com/sitbat/SlopeCraft-Web/issues"},
   "type": "module",
   "license": "GPL-3.0-or-later",
   "scripts": {

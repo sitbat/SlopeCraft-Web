@@ -2,7 +2,7 @@
 
 **中文** | [English](README-en.md)
 
-[项目源码](https://github.com/sitbat/SlopeCraftWeb)
+[项目源码](https://github.com/sitbat/SlopeCraft-Web)
 
 在浏览器中制作 Minecraft 地图画的纯静态网页应用。基于 [SlopeCraft](https://github.com/SlopeCraft/SlopeCraft) 5.4.1，保留原 C++ 转换、三维构建和文件导出算法，以 WebAssembly SIMD 和 pthreads 运行。
 

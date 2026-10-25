@@ -6,8 +6,8 @@ body:
   - type: markdown
     attributes:
       value: |
-        此表单用于本仓库的网页移植版。运行条件和构建方法见 [项目说明](https://github.com/sitbat/SlopeCraftWeb#readme)，地图画原理与教程见 [原项目文档](https://slopecraft.readthedocs.io/)。
-        请先搜索 [本仓库已有问题](https://github.com/sitbat/SlopeCraftWeb/issues)，有相同情况可补充到原 issue。
+        此表单用于本仓库的网页移植版。运行条件和构建方法见 [项目说明](https://github.com/sitbat/SlopeCraft-Web#readme)，地图画原理与教程见 [原项目文档](https://slopecraft.readthedocs.io/)。
+        请先搜索 [本仓库已有问题](https://github.com/sitbat/SlopeCraft-Web/issues)，有相同情况可补充到原 issue。
   - type: textarea
     id: description
     attributes:

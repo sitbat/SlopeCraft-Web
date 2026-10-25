@@ -1,6 +1,6 @@
 # Upstream and attribution
 
-[SlopeCraft Web](https://github.com/sitbat/SlopeCraftWeb) is an independent Web
+[SlopeCraft Web](https://github.com/sitbat/SlopeCraft-Web) is an independent Web
 repository derived from [SlopeCraft](https://github.com/SlopeCraft/SlopeCraft),
 created by TokiNoBug and the SlopeCraft contributors. The retained source keeps
 its original copyright headers and GPL-3.0-or-later license.
@@ -12,7 +12,7 @@ origin of the reused code independently of this repository's history.
 
 - Upstream source revision: [`d4cda09853fe83141e155cb3a5280ce22ad9cd3a`](https://github.com/SlopeCraft/SlopeCraft/commit/d4cda09853fe83141e155cb3a5280ce22ad9cd3a).
 - Original desktop version: 5.4.1.
-- Web repository: [sitbat/SlopeCraftWeb](https://github.com/sitbat/SlopeCraftWeb).
+- Web repository: [sitbat/SlopeCraft-Web](https://github.com/sitbat/SlopeCraft-Web).
 - Archived original desktop documentation: [Chinese](docs/upstream/README.zh-CN.md)
   and [English](docs/upstream/README.en.md).
 

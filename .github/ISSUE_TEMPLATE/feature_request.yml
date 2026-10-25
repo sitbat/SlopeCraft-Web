@@ -6,7 +6,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        请先查看 [网页项目说明与桌面版差异](https://github.com/sitbat/SlopeCraftWeb#readme) 和 [本仓库已有建议](https://github.com/sitbat/SlopeCraftWeb/issues)。
+        请先查看 [网页项目说明与桌面版差异](https://github.com/sitbat/SlopeCraft-Web#readme) 和 [本仓库已有建议](https://github.com/sitbat/SlopeCraft-Web/issues)。
         原项目的地图画原理和教程见 [SlopeCraft 文档](https://slopecraft.readthedocs.io/)。
   - type: textarea
     id: problem

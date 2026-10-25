@@ -1,6 +1,6 @@
 # SlopeCraft Web
 
-[SlopeCraft Web](https://github.com/sitbat/SlopeCraftWeb) 是独立的纯静态网页移植仓库，基于 SlopeCraft 5.4.1（上游提交 `d4cda09853fe83141e155cb3a5280ce22ad9cd3a`）。
+[SlopeCraft Web](https://github.com/sitbat/SlopeCraft-Web) 是独立的纯静态网页移植仓库，基于 SlopeCraft 5.4.1（上游提交 `d4cda09853fe83141e155cb3a5280ce22ad9cd3a`）。
 本仓库 Git 历史从 Web 初始源码快照开始，不继承上游提交历史；只保留 Web 所需的 C++ 组件、方块资源和预设。
 原作者版权与 GPL 声明保留，来源说明见 [UPSTREAM.md](../UPSTREAM.md)。
 图片、方块包、转换、三维构建、缓存与导出均在浏览器本地处理，不需要计算后端、账号或数据库服务器。

@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-Initial snapshot of the independent [SlopeCraft Web repository](https://github.com/sitbat/SlopeCraftWeb), based on SlopeCraft 5.4.1 at upstream commit `d4cda09853fe83141e155cb3a5280ce22ad9cd3a`. Repository history begins with this Web snapshot and does not include upstream Git history. Original copyright and GPL notices are retained. No release or version tag has been published.
+Initial snapshot of the independent [SlopeCraft Web repository](https://github.com/sitbat/SlopeCraft-Web), based on SlopeCraft 5.4.1 at upstream commit `d4cda09853fe83141e155cb3a5280ce22ad9cd3a`. Repository history begins with this Web snapshot and does not include upstream Git history. Original copyright and GPL notices are retained. No release or version tag has been published.
 
 - Included the Web application, its required C++ components, block resources and
   presets; excluded unrelated desktop application sources and native CI.
