@@ -34,8 +34,20 @@ use the public issue tracker.
   access outside the intended browser/file boundaries.
 - Conversion and export run locally in a browser Worker and WebAssembly module.
   No image-upload or remote computation backend is part of the Web application.
-- The pthread build requires a secure context and cross-origin isolation.
-  Hosting responses and access controls are the deployer's responsibility;
+- The pthread build requires a secure context and confirmed cross-origin
+  isolation. Existing server COOP/COEP headers can provide it directly. On an
+  HTTPS static site, a same-directory Service Worker may add those headers to
+  controlled responses, with a first-load reload before the engine starts.
+- Keep `coi-serviceworker.js`, `static-bootstrap.js` and
+  `browser-environment.js` as trusted application files served with JavaScript
+  MIME types. For the static bootstrap path, the browser must permit Service
+  Workers and `sessionStorage`.
+  Use a separate same-origin application directory with no competing Worker
+  control; startup must not replace another application's Service Worker.
+  Direct `file://` access is unsupported, and there is no single-thread fallback.
+- The Service Worker path does not replace hosting access controls or production
+  network/certificate responsibilities. Those remain with the deployer;
+  server-configured isolation headers are still a supported alternative, and
   the local preview script is a development tool.
 - Dependency downloads are checked against `web/dependency-lock.json` during
   the Web build. Review changes to pinned dependencies, SDK revisions and CI

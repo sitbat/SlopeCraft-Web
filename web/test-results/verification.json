@@ -54,8 +54,53 @@
     ]
   },
   "testSummary": {
-    "passed": 113,
+    "passed": 133,
     "failed": 0,
     "skipped": 0
+  },
+  "staticIsolation": {
+    "verifiedOn": "2026-10-25",
+    "nodeTestsPassed": 20,
+    "nodeTestsFailed": 0,
+    "checks": [
+      "Already isolated pages start directly without registering a Service Worker",
+      "A successful isolated reload starts the application; failed isolation does not reload in a loop",
+      "Concurrent preparation cannot trigger a second automatic reload",
+      "Existing foreign Service Workers and denied storage are preserved and diagnosed",
+      "Interception is restricted to the same origin and the intersection of registration scope and script directory",
+      "Cross-origin, API, Range, redirect, opaque, partial and not-modified responses are not rewritten",
+      "Network failures propagate without a cache or project-data fallback"
+    ],
+    "browser": {
+      "surface": "Codex Chromium in-app browser on Windows",
+      "hosting": "HTTP loopback secure contexts; raw responses verified without COOP or COEP",
+      "originRoot": {
+        "crossOriginIsolated": true,
+        "sharedArrayBufferAvailable": true,
+        "computeThreads": 8
+      },
+      "subdirectory": {
+        "path": "/map/",
+        "testedPackagedFiles": true,
+        "crossOriginIsolated": true,
+        "sharedArrayBufferAvailable": true,
+        "computeThreads": 8
+      },
+      "alreadyIsolatedHosting": {
+        "crossOriginIsolated": true,
+        "sharedArrayBufferAvailable": true,
+        "computeThreads": 8
+      },
+      "functionalCheck": "256x192 PNG, Lab00 with dithering, native build and browser Litematica download",
+      "downloadIndependentValidation": {
+        "bytes": 90366,
+        "size": [258, 187, 194],
+        "paletteEntries": 34,
+        "valid": true
+      },
+      "cloudServerModified": false,
+      "cloudDeploymentVerified": false,
+      "physicalMobileDeviceTested": false
+    }
   }
 }

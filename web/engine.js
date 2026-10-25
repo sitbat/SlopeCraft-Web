@@ -1,4 +1,5 @@
 /** Browser-side owner of the SlopeCraft WASM worker. GPL-3.0-or-later. */
+import {isolationEnvironment} from './browser-environment.js';
 export class EngineClient {
   constructor() {
     this.worker = null;
@@ -16,10 +17,8 @@ export class EngineClient {
   async init(options = {}) {
     if (this.ready) return this.ready;
     this.ready = (async () => {
-      if (!globalThis.isSecureContext || !globalThis.crossOriginIsolated ||
-          typeof SharedArrayBuffer === 'undefined') {
-        throw new Error('多线程运行环境未就绪。请由部署者提供安全上下文及跨源隔离响应头（COOP/COEP），然后刷新页面。');
-      }
+      const environment=isolationEnvironment();
+      if(!environment.ready)throw new Error(environment.message);
       if (typeof WebAssembly === 'undefined' || typeof Worker === 'undefined') {
         throw new Error('此浏览器不支持 WebAssembly 或 Web Worker，请使用较新的浏览器。');
       }

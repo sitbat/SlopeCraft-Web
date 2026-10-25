@@ -35,13 +35,18 @@ Open the printed address, normally `http://127.0.0.1:4173`. This is a developmen
 
 Preview from the source checkout, or generate static files with the source-build steps below. Host **all of `web/dist/`** together as static files. The packaging script also creates `SlopeCraft-Web-static.zip` in the repository's parent directory. Root and subdirectory hosting are supported; runtime resources use relative URLs and do not depend on a CDN. Node, Python, Qt and Emscripten are not needed to run the deployed application.
 
-The browser must provide:
+The browser must support WebAssembly SIMD, Web Workers and SharedArrayBuffer, with `crossOriginIsolated === true` before the engine starts. Production hosting requires an **HTTPS secure context**; localhost/loopback is suitable for local development.
 
-- An **HTTPS secure context** in production; localhost/loopback is suitable for local development.
-- WebAssembly SIMD, Web Workers and SharedArrayBuffer.
-- Cross-origin isolation: `crossOriginIsolated === true`. A typical setup supplies `Cross-Origin-Opener-Policy: same-origin` and `Cross-Origin-Embedder-Policy: require-corp` response headers.
+Startup supports two isolation paths:
 
-**Only the multithreaded engine is provided; there is no single-thread fallback.** HTTPS alone does not establish cross-origin isolation. Opening the HTML directly from the filesystem is insufficient. The settings dialog reports the actual environment and missing requirements. This repository does not automatically configure production hosting.
+1. If server-provided COOP/COEP headers have already isolated the page, start the multithreaded engine directly.
+2. On an HTTPS static site that is not yet isolated, attempt to register a same-directory Service Worker that adds COOP/COEP to controlled page and resource responses. The first visit may reload once. Start the engine only after isolation and shared-memory checks succeed.
+
+For the static Service Worker path, retain `coi-serviceworker.js`, `static-bootstrap.js` and `browser-environment.js` in the application directory and serve them with a JavaScript MIME type. The browser must allow Service Workers and `sessionStorage`. Use a separate directory on the same origin that is not controlled by another Service Worker; startup must not replace another application's Worker. `file://` access is unsupported.
+
+Server response headers remain an alternative: `Cross-Origin-Opener-Policy: same-origin` and `Cross-Origin-Embedder-Policy: require-corp`. On HTTPS browsers that support and permit the Service Worker path, the static bootstrap can supply these headers without changing the cloud server's isolation configuration. Production networking, certificates, access controls and server configuration remain the deployer's responsibility.
+
+**Only the multithreaded engine is provided; there is no single-thread fallback.** HTTPS alone does not prove isolation succeeded. If registration, control or isolation checks have not completed, the page reports the actual state instead of claiming the engine is ready.
 
 ## Build the engine from source
 
@@ -71,7 +76,7 @@ node web/scripts/check-static.mjs
 node web/tests/benchmark.mjs
 ```
 
-Build the static package before running its integrity check. Tests load the real pthread WASM; they do not substitute a JavaScript approximation. The saved verification records **113 passing tests**, covering algorithms, per-thread work counters, map splitting, structure semantics, transparency, block icons and native caches. See the [coverage checklist](web/tests/parity-checklist.md) and [verification record](web/test-results/verification.json).
+Build the static package before running its integrity check. Tests load the real pthread WASM; they do not substitute a JavaScript approximation. The saved verification records **133 passing tests**, covering algorithms, per-thread work counters, map splitting, structure semantics, transparency, block icons and native caches. See the [coverage checklist](web/tests/parity-checklist.md) and [verification record](web/test-results/verification.json).
 
 Browser checks on Windows Chromium cover import, conversion, construction, materials, downloads, caching and layouts at widths of 390, 633 and 1280 pixels. Responsive viewport checks are not physical-phone tests, and Node benchmarks are not browser performance measurements. Exports are independently parsed; each format has not yet been imported and verified inside Minecraft.
 

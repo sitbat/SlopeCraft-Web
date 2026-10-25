@@ -35,13 +35,18 @@ npm run preview
 
 当前通过源码方式预览，或按下文“从源码构建引擎”生成静态文件。将生成的 **`web/dist/` 全部内容**作为同一站点的静态文件托管。打包脚本还会在仓库的上一级目录生成 `SlopeCraft-Web-static.zip`。支持站点根目录或子目录，运行时资源使用相对 URL，不依赖 CDN；部署运行不需要 Node、Python、Qt 或 Emscripten。
 
-浏览器必须满足以下条件：
+浏览器需支持 WebAssembly SIMD、Web Worker 和 SharedArrayBuffer，并在启动引擎前满足 `crossOriginIsolated === true`。正式部署使用 **HTTPS 安全上下文**；本地开发可使用 localhost／回环地址。
 
-- 正式部署使用 **HTTPS 安全上下文**；本地开发可使用 localhost／回环地址。
-- 支持 WebAssembly SIMD、Web Worker、SharedArrayBuffer。
-- 满足跨源隔离，`crossOriginIsolated === true`。通常需要部署者提供 `Cross-Origin-Opener-Policy: same-origin` 和 `Cross-Origin-Embedder-Policy: require-corp` 响应头。
+启动流程支持两种隔离方式：
 
-**仅提供多线程引擎，没有单线程回退。** 单独启用 HTTPS 不等于跨源隔离；直接双击 HTML 文件也不能运行本项目。设置对话框会显示实际运行环境，缺少条件时明确报错。本仓库不自动修改生产服务器配置。
+1. 服务器已提供 COOP/COEP、页面已经隔离时，直接启动多线程引擎。
+2. HTTPS 静态站点尚未隔离时，启动页尝试注册同目录 Service Worker，为受控页面与资源响应补充 COOP/COEP。首次访问可能自动刷新一次；只有确认隔离与共享内存可用后才启动引擎。
+
+使用纯静态 Service Worker 流程时，请保留应用目录中的 `coi-serviceworker.js`、`static-bootstrap.js`、`browser-environment.js`，并以 JavaScript MIME 类型提供这些文件。浏览器须允许 Service Worker 和 `sessionStorage`。应用应放在独立的同源目录，避免被其他 Service Worker 接管；启动流程不应替换其他应用的 Worker。不能通过 `file://` 打开。
+
+服务器响应头仍可作为替代方式：`Cross-Origin-Opener-Policy: same-origin` 和 `Cross-Origin-Embedder-Policy: require-corp`。在支持并允许 Service Worker 的 HTTPS 环境中，静态启动流程可自动补齐这些响应头，无需专门修改云服务器的隔离配置；生产网络、证书、访问控制和服务器配置仍由部署者负责。
+
+**仅提供多线程引擎，没有单线程回退。** HTTPS 本身不等于隔离成功；如果 Worker 注册、接管或隔离检查未完成，页面会显示实际状态，而不会提前宣称引擎已就绪。
 
 ## 从源码构建引擎
 
@@ -71,7 +76,7 @@ node web/scripts/check-static.mjs
 node web/tests/benchmark.mjs
 ```
 
-静态文件校验需先执行 `npm run build`。测试加载真实的多线程 WASM，不用 JavaScript 近似算法替代。当前保存的验收记录为 **113 项测试通过**，覆盖算法、并行工作计数、地图分割、结构语义、透明策略、方块图标与原生缓存。详见[功能核对表](web/tests/parity-checklist.md)和[验收记录](web/test-results/verification.json)。
+静态文件校验需先执行 `npm run build`。测试加载真实的多线程 WASM，不用 JavaScript 近似算法替代。当前保存的验收记录为 **133 项测试通过**，覆盖算法、并行工作计数、地图分割、结构语义、透明策略、方块图标与原生缓存。详见[功能核对表](web/tests/parity-checklist.md)和[验收记录](web/test-results/verification.json)。
 
 浏览器已在 Windows Chromium 环境验收导入、转换、构建、材料、下载、缓存和 390／633／1280 像素宽度布局。响应式视口测试不代表手机真机测试；Node 基准不代表浏览器性能。导出文件经过独立格式解析，尚未逐种在 Minecraft 内导入验收。
 

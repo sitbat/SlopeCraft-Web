@@ -66,6 +66,18 @@ downloads and IndexedDB. `node web/scripts/preview.mjs` starts the optional loca
 development preview. Production hosting configuration belongs to the deployer.
 The port ships a pthread/SIMD build; do not introduce a single-thread fallback.
 
+Validate both browser startup paths separately: an already-isolated page starts
+directly, while a plain HTTPS static origin may use the same-directory Service
+Worker to add COOP/COEP and reload once before isolation is confirmed. Keep
+`coi-serviceworker.js`, `static-bootstrap.js` and `browser-environment.js` in
+the packaged application directory, with JavaScript MIME types. Require permitted
+Service Workers and `sessionStorage`, a separate same-origin scope with no
+competing Worker, and no takeover of other applications' Workers. `file://`
+is unsupported. Registration or isolation failures must report the actual state
+without starting an unisolated engine or adding a single-thread fallback.
+Server-provided headers remain a valid alternative. Document real browser results;
+Node tests alone do not verify this navigation/reload lifecycle or a cloud setup.
+
 Use `node web/tests/benchmark.mjs` for a reproducible Node measurement. Identify
 the runtime, hardware, fixture and compiled artifact when reporting performance.
 Node results do not establish browser or mobile performance.

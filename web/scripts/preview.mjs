@@ -6,11 +6,14 @@ import {stat,readFile} from 'node:fs/promises';
 
 const root=path.resolve(fileURLToPath(new URL(process.argv.includes('--dist')?'../dist/':'../',import.meta.url)));
 const port=Number(process.env.PORT || 4173);
+const isolationHeaders=!process.argv.includes('--no-isolation');
 const mime={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json; charset=utf-8','.wasm':'application/wasm','.png':'image/png','.svg':'image/svg+xml','.zip':'application/zip','.txt':'text/plain; charset=utf-8'};
 const server=http.createServer(async(request,response)=>{
-  response.setHeader('Cross-Origin-Opener-Policy','same-origin');
-  response.setHeader('Cross-Origin-Embedder-Policy','require-corp');
-  response.setHeader('Cross-Origin-Resource-Policy','same-origin');
+  if(isolationHeaders){
+    response.setHeader('Cross-Origin-Opener-Policy','same-origin');
+    response.setHeader('Cross-Origin-Embedder-Policy','require-corp');
+    response.setHeader('Cross-Origin-Resource-Policy','same-origin');
+  }
   response.setHeader('Cache-Control','no-store');
   try{
     const pathname=decodeURIComponent(new URL(request.url,'http://localhost').pathname);

@@ -15,6 +15,7 @@ From `web/`, with Node available:
 ```sh
 node --test tests/assets.test.mjs tests/nbt.test.mjs tests/png.test.mjs
 node --test tests/engine.test.mjs
+node --test tests/static-bootstrap.test.mjs tests/static-worker.test.mjs
 ```
 
 Prepare the assets before the first command and build `web/wasm/slopecraft.js` before the second command.
@@ -70,10 +71,26 @@ These cannot be established by the direct C++/Wasm API suite:
   language choice and original help/about/license links.
 - Worker initialization and errors in the browser's actual isolation context;
   UI responsiveness while C++ pthreads calculate; download bytes round trip.
+- Already-isolated hosting starts the pthread engine directly without a needless
+  Service Worker registration or reload.
+- A plain HTTPS static site can register the same-directory isolation Worker,
+  become controlled, reload at most once for that bootstrap attempt and only
+  report ready after `crossOriginIsolated` and SharedArrayBuffer are available.
+- The static package retains `coi-serviceworker.js`, `static-bootstrap.js` and
+  `browser-environment.js`, served with JavaScript MIME types. Verify registration
+  at an origin root and in a subdirectory with a separate same-origin scope.
+- Denied Service Worker/sessionStorage, unsupported `file://` access, missing or
+  incorrectly typed scripts, and competing Worker control must produce an honest
+  startup state without reload loops, taking over another application's Worker,
+  or falling back to a single-thread engine.
 - Narrow-window/mobile rendering and supported browser versions.
 
-Server deployment, network configuration, and a single-thread fallback are outside
-the requested implementation scope. All runtime tests use the pthread build.
+The Service Worker navigation and isolation lifecycle needs browser verification;
+the direct Node engine suite does not establish it. Keep actual results separate
+from this checklist. No cloud deployment or physical-device result is implied.
+Production network/certificate/access-control configuration remains the deployer's
+responsibility. Server COOP/COEP headers remain an alternative to the static
+bootstrap. All runtime tests use the pthread build, with no single-thread fallback.
 
 ## Limits of the evidence
 

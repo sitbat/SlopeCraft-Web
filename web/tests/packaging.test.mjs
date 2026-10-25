@@ -17,7 +17,7 @@ async function fixture(t){
 
 test('source archive includes public source and licenses, excluding credentials and generated/private directories',async t=>{
   const {root,put}=await fixture(t);
-  const included=['package.json','LICENSE','.github/workflows/web.yml','SlopeCraftL/core.cpp','web/app.js','web/assets/licenses/zlib/LICENSE','web/dependency-sources/zlib.tar.gz','web/test-results/verification.json'];
+  const included=['package.json','LICENSE','.github/workflows/web.yml','SlopeCraftL/core.cpp','web/app.js','web/static-bootstrap.js','web/coi-serviceworker.js','web/browser-environment.js','web/assets/licenses/zlib/LICENSE','web/dependency-sources/zlib.tar.gz','web/test-results/verification.json'];
   const excluded=['.git/config','.env','.npmrc','work/private-notes.md','private-folder/notes.md','web/.env.production','web/native/private.pem','web/native/credentials.json','web/local-debug.log','web/dist/old.js','web/wasm/core.wasm','web/test-results/browser-export.litematic','web/assets/blocks/copied.png'];
   for(const name of [...included,...excluded])await put(name);
   const files=await collectSourceFiles(root);

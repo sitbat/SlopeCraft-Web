@@ -13,10 +13,15 @@
 支持站点根目录或子目录，运行时资源均使用相对 URL，不依赖 CDN。
 运行不需要 Node、Python、Qt 或 Emscripten。
 
-网络、证书、跳转与服务器配置由部署者负责，本项目不修改这些设置。
-浏览器运行条件为 HTTPS 安全上下文、WebAssembly SIMD、Web Worker、SharedArrayBuffer 和跨源隔离。
-部署者需要提供适当的 COOP/COEP 响应头；单独使用 HTTPS 不会自动使 `crossOriginIsolated` 为真。
-设置对话框显示实际环境状态，不满足条件时明确报错，不加载单线程替代品。
+浏览器运行条件为 HTTPS 安全上下文、WebAssembly SIMD、Web Worker、SharedArrayBuffer 和跨源隔离；本地开发可使用 localhost／回环地址。引擎只在 `crossOriginIsolated === true` 且共享内存检查通过后启动。
+
+- 服务器已配置 COOP/COEP 并完成隔离：直接启动。
+- HTTPS 静态站点尚未隔离：尝试注册同目录 Service Worker，为受控页面与资源响应补充 COOP/COEP；首次可能自动刷新一次，等待接管并确认隔离成功后才启动。
+
+必须保留同一应用目录内的 `coi-serviceworker.js`、`static-bootstrap.js`、`browser-environment.js`，并以 JavaScript MIME 类型提供；采用 Service Worker 流程时，浏览器需允许 Service Worker 与 `sessionStorage`。将应用放在独立的同源目录，不让其他 Service Worker 接管，启动流程也不应替换其他应用的 Worker。不能使用 `file://`。
+
+支持并允许该流程的 HTTPS 浏览器可通过静态文件补齐隔离响应头，无需单独修改云服务器的隔离配置；服务器直接配置 `Cross-Origin-Opener-Policy: same-origin`、`Cross-Origin-Embedder-Policy: require-corp` 仍可替代此流程。网络、证书、跳转、访问控制和生产服务器配置仍由部署者负责。
+仅提供多线程引擎。页面显示实际的注册、隔离和引擎状态，失败时明确提示，不加载单线程替代品。
 
 ## 功能
 
@@ -59,7 +64,7 @@ node web/scripts/check-static.mjs
 `node web/scripts/package-dependencies.mjs` 从同一构建目录收集对应依赖源码和许可证，再由静态打包脚本生成包含这些文件的源码包。当前没有已发布的 Release 或版本标签。
 本机验收使用 `node web/scripts/preview.mjs`，只监听回环地址。它是开发工具，不是生产服务器配置。
 
-实际引擎和独立格式解析测试通过 113 项，检查范围及证据限制见 [tests/parity-checklist.md](tests/parity-checklist.md)。
+实际引擎和独立格式解析测试通过 133 项，检查范围及证据限制见 [tests/parity-checklist.md](tests/parity-checklist.md)。
 基准用 `node web/tests/benchmark.mjs` 重现；[test-results/benchmark-node.json](test-results/benchmark-node.json) 是 Node WASM 单次测量，不能当作浏览器或手机性能。
 浏览器另行验证图像导入、转换、构建、材料、下载、缓存和响应式界面。
 导出通过独立解析器检查结构语义；未宣称每种格式都已在 Minecraft 游戏内逐一导入验证。
