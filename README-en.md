@@ -48,6 +48,16 @@ Server response headers remain an alternative: `Cross-Origin-Opener-Policy: same
 
 **Only the multithreaded engine is provided; there is no single-thread fallback.** HTTPS alone does not prove isolation succeeded. If registration, control or isolation checks have not completed, the page reports the actual state instead of claiming the engine is ready.
 
+## Compression and parallel startup
+
+The static package retains both the original pthread WASM and a pre-generated gzip file. The current original is **1,834,985 bytes**, versus **624,441 bytes** for gzip: a **66.0% reduction in file size**, not a measured browser-startup speedup.
+
+The browser requests `wasm/slopecraft.wasm.gz` as an ordinary static file and decodes it with native `DecompressionStream`. If the host has already decoded the response through `Content-Encoding`, the loader recognizes the actual WASM bytes and avoids decoding twice. Decoded size and SHA-256 must match `wasm/wasm-integrity.js`. Missing decompression support or a gzip download, format or integrity failure falls back only to the original `slopecraft.wasm` for the same multithreaded engine, with the same integrity checks.
+
+UI preparation starts the core and block catalog together. Once the catalog reaches the UI, all three bundled block ZIP downloads begin in parallel. Native block-library registration remains ordered, and preparation shares the catalog result instead of requesting it twice. Core JavaScript and WASM URLs carry their corresponding SHA query parameters to reduce mixed-version cache responses.
+
+Keep `wasm-loader.js`, `startup-resources.js` and the complete `wasm/` directory, including `slopecraft.wasm.gz` and `wasm-integrity.js`. Serve JavaScript with the correct MIME type and update the whole matching build together. Asset preparation invokes `web/scripts/prepare-wasm.mjs` to regenerate compression and metadata. No new server `Content-Encoding` rule or rate-limit change is required; threading and isolation requirements remain unchanged.
+
 ## Build the engine from source
 
 Preview supports Node.js 22+; development and CI use Node.js 24. Building the engine also requires CMake 3.29+, Ninja, and an installed and activated **Emscripten 4.0.23** SDK. Set `EMSDK` to its root; optionally set `CMAKE` and `NINJA` to executable paths.
@@ -76,7 +86,7 @@ node web/scripts/check-static.mjs
 node web/tests/benchmark.mjs
 ```
 
-Build the static package before running its integrity check. Tests load the real pthread WASM; they do not substitute a JavaScript approximation. The saved verification records **133 passing tests**, covering algorithms, per-thread work counters, map splitting, structure semantics, transparency, block icons and native caches. See the [coverage checklist](web/tests/parity-checklist.md) and [verification record](web/test-results/verification.json).
+Build the static package before running its integrity check. Tests load the real pthread WASM; they do not substitute a JavaScript approximation. The saved verification records **156 passing tests**, covering algorithms, per-thread work counters, map splitting, structure semantics, transparency, block icons and native caches. See the [coverage checklist](web/tests/parity-checklist.md) and [verification record](web/test-results/verification.json).
 
 Browser checks on Windows Chromium cover import, conversion, construction, materials, downloads, caching and layouts at widths of 390, 633 and 1280 pixels. Responsive viewport checks are not physical-phone tests, and Node benchmarks are not browser performance measurements. Exports are independently parsed; each format has not yet been imported and verified inside Minecraft.
 

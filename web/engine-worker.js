@@ -1,5 +1,7 @@
 /** All native calls are serialized here; pthreads run inside the WASM module. */
 import {RuntimeCache} from './runtime-cache.js';
+import {createStartupResources} from './startup-resources.js';
+import {loadWasmBinary, versionedWasmModuleURL} from './wasm-loader.js';
 let core;
 let catalog;
 let currentSequence;
@@ -16,24 +18,24 @@ globalThis.scProgress = progress => {
   postMessage({type: 'progress', progress: {sequence: currentSequence, ...progress}});
 };
 
-function nativeRequest(op, payload = {}, bytes) {
+function nativeRequest(op, payload = {}, bytes, activeCore = core) {
   let pointer = 0;
   try {
     const input = bytes ? new Uint8Array(bytes) : null;
     if (input?.byteLength) {
-      pointer = core._malloc(input.byteLength);
+      pointer = activeCore._malloc(input.byteLength);
       if (!pointer) throw new Error('浏览器内存不足，无法传入图片或方块库。');
-      core.HEAPU8.set(input, pointer);
+      activeCore.HEAPU8.set(input, pointer);
     }
-    const text = core.ccall('sc_request', 'string', ['string', 'number', 'number'],
+    const text = activeCore.ccall('sc_request', 'string', ['string', 'number', 'number'],
       [JSON.stringify({op, ...payload}), pointer, input?.byteLength || 0]);
     const result = JSON.parse(text);
     if (!result.ok) throw new Error(result.error || 'SlopeCraft 核心返回错误');
     const data = result.data ?? {};
     if (data.preview?.pointer != null) {
       const {pointer: start, length, width, height} = data.preview;
-      if (length !== width * height * 4 || start + length > core.HEAPU8.length) throw new Error('核心返回了无效的预览图像。');
-      const rgba = core.HEAPU8.slice(start, start + length).buffer;
+      if (length !== width * height * 4 || start + length > activeCore.HEAPU8.length) throw new Error('核心返回了无效的预览图像。');
+      const rgba = activeCore.HEAPU8.slice(start, start + length).buffer;
       data.preview = {width, height, rgba};
       data.width = width;
       data.height = height;
@@ -41,15 +43,15 @@ function nativeRequest(op, payload = {}, bytes) {
     }
     if (Array.isArray(data.files)) {
       data.files = data.files.map(file => {
-        const bytes = core.FS.readFile(file.path);
+        const bytes = activeCore.FS.readFile(file.path);
         const content = bytes.slice().buffer;
-        core.FS.unlink(file.path);
-        try {core.FS.rmdir(file.path.slice(0,file.path.lastIndexOf('/')));} catch {}
+        activeCore.FS.unlink(file.path);
+        try {activeCore.FS.rmdir(file.path.slice(0,file.path.lastIndexOf('/')));} catch {}
         return {kind: file.kind, name: file.name, mime: file.mime || 'application/octet-stream', data: content};
       });
     }
     return data;
-  } finally { if (pointer) core._free(pointer); }
+  } finally { if (pointer) activeCore._free(pointer); }
 }
 
 async function fetchChecked(url, asJson = false) {
@@ -58,34 +60,42 @@ async function fetchChecked(url, asJson = false) {
   return asJson ? response.json() : response.arrayBuffer();
 }
 
+let wasmMetrics;
+const startup = createStartupResources({
+  baseURL: import.meta.url,
+  fetchResource: fetchChecked,
+  async createCore() {
+    wasmMetrics = undefined;
+    scProgress({stage: 'loading', message: '加载多线程 WebAssembly 核心', current: 0, total: 4});
+    const moduleUrl = versionedWasmModuleURL(new URL('./wasm/slopecraft.js', import.meta.url));
+    const [{default: createModule}, wasmBinary] = await Promise.all([
+      import(moduleUrl.href), loadWasmBinary(moduleUrl, {onMetrics: metrics => {wasmMetrics = metrics;}}),
+    ]);
+    const moduleOptions = {
+      wasmBinary,
+      mainScriptUrlOrBlob: moduleUrl.href,
+      locateFile: path => new URL(path, moduleUrl).href,
+      printErr: message => scProgress({stage: 'log', message: String(message)}),
+      onAbort: message => { throw new Error(`计算核心异常终止：${message}`); },
+    };
+    try { return await createModule(moduleOptions); }
+    catch (error) { moduleOptions.PThread?.terminateAllThreads(); throw error; }
+  },
+  requestNative: (activeCore, op, payload, bytes) => nativeRequest(op, payload, bytes, activeCore),
+  onProgress: progress => scProgress(progress),
+});
+
 async function initialize(payload) {
   cacheEnabled = payload.cacheEnabled !== false;
   if (core) return {blocks: catalog.blocks, groups: catalog.groups, metadata: nativeRequest('init', payload)};
-  scProgress({stage: 'loading', message: '加载多线程 WebAssembly 核心', current: 0, total: 4});
-  const moduleUrl = new URL('./wasm/slopecraft.js', import.meta.url);
-  const {default: createModule} = await import(moduleUrl.href);
-  core = await createModule({
-    locateFile: path => new URL(path, moduleUrl).href,
-    printErr: message => scProgress({stage: 'log', message: String(message)}),
-    onAbort: message => { throw new Error(`计算核心异常终止：${message}`); },
-  });
-  const init = nativeRequest('init', payload);
-  catalog = await fetchChecked(new URL('./assets/blocklists.json', import.meta.url), true);
-  const loaded = [];
-  for (let i = 0; i < catalog.groups.length; i++) {
-    const group = catalog.groups[i];
-    scProgress({stage: 'loading', message: `加载方块库 ${group.name}`, current: i + 1, total: 4});
-    const bytes = await fetchChecked(new URL(`./assets/blocklists/${group.name}.zip`, import.meta.url));
-    const result = nativeRequest('loadBlocklist', {name: group.name}, bytes);
-    for (const block of result.blocks || []) {
-      const source = group.blocks.find(b => b.id === block.id && b.baseColor === block.baseColor);
-      loaded.push({...source, ...block, nameZH: block.nameZH || block.name || source?.nameZH,
-        group: group.name, iconUrl: source?.iconUrl});
-    }
-  }
-  if (loaded.length) catalog.blocks = loaded;
+  const result = await startup.initialize(payload);
+  // Publish only a fully initialized core. Failed attempts terminate their pool
+  // inside startup, so another init never sees a half-loaded block library.
+  core = result.core;
+  catalog = result.catalog;
   scProgress({stage: 'ready', message: '多线程计算核心已就绪', current: 4, total: 4});
-  return {...init, blocks: catalog.blocks, groups: catalog.groups, metadata: nativeRequest('metadata')};
+  return {...result.init, blocks: catalog.blocks, groups: catalog.groups, baseColors: catalog.baseColors,
+    metadata: result.metadata, startupTimings: {...result.startupTimings, wasm: wasmMetrics}};
 }
 
 async function restoreTask(id) {
@@ -195,7 +205,8 @@ self.addEventListener('message', ({data: message}) => {
     currentSequence = sequence;
     try {
       let data;
-      if (type === 'init') data = await initialize(payload);
+      if (type === 'prepare') data = await startup.prepare();
+      else if (type === 'init') data = await initialize(payload);
       else if (!core) throw new Error('计算引擎尚未初始化。');
       else if (type === 'cacheStats') data = cacheAvailable ? await cache.stats() : {entries:cachedTasks.size,bytes:0,available:false};
       else if (type === 'cacheClear') data = await clearCache();

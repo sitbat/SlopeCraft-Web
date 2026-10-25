@@ -3,6 +3,7 @@ import {fileURLToPath} from 'node:url';
 import path from 'node:path';
 import {zip} from './zip.mjs';
 import {resetGeneratedDirectory} from './generated-files.mjs';
+import './prepare-wasm.mjs';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const assets = path.join(root, 'web/assets');

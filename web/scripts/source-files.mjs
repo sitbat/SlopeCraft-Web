@@ -3,7 +3,7 @@ import {readdir,readFile} from 'node:fs/promises';
 
 const roots=new Set(['.github','Blocks_SCL','SlopeCraft','SlopeCraftL','docs','license-translations','utilities']);
 const rootFiles=new Set(['.clang-format','.gitattributes','.gitignore','LICENSE','package.json','package-lock.json','README.md','README-en.md','CHANGELOG.md','CONTRIBUTING.md','SECURITY.md','UPSTREAM.md']);
-const webFiles=new Set(['index.html','static-bootstrap.js','coi-serviceworker.js','browser-environment.js','app.js','engine.js','engine-worker.js','runtime-cache.js','styles.css','ui-archive.js','CMakeLists.txt','dependency-lock.json','README.md','THIRD_PARTY_NOTICES.md']);
+const webFiles=new Set(['index.html','static-bootstrap.js','coi-serviceworker.js','browser-environment.js','wasm-loader.js','startup-resources.js','app.js','engine.js','engine-worker.js','runtime-cache.js','styles.css','ui-archive.js','CMakeLists.txt','dependency-lock.json','README.md','THIRD_PARTY_NOTICES.md']);
 const excludedDirectories=new Set(['.git','node_modules','build','dist','wasm','.cache','work','__pycache__']);
 const sensitive=/^(?:\.env(?:\..*)?|\.npmrc|\.pypirc|credentials(?:\..*)?|secrets?(?:\..*)?|id_(?:rsa|ed25519|ecdsa)(?:\..*)?)$|\.(?:pem|p12|pfx|key)$/i;
 

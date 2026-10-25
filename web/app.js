@@ -204,8 +204,12 @@ function applyBlockPreset(preset, shouldInvalidate=true) {
   for(const item of preset){const bc=Number(item.baseColor);if(Number.isInteger(bc)&&bc>=0&&bc<62&&typeof(item.blockId??item.id)==='string')state.selections.set(bc,{id:item.blockId??item.id,enabled:item.enabled!==false});}
   normalizeSelections();if(shouldInvalidate)invalidateConversion();
 }
-async function applyPreset(name) {
+async function loadPreset(name) {
   if(!state.presets[name]){const response=await fetch(`./assets/presets/${name}.sc_preset_json`);if(!response.ok)throw new Error(`无法加载${presetNames[name]}预设。`);state.presets[name]=await response.json();}
+  return state.presets[name];
+}
+async function applyPreset(name) {
+  await loadPreset(name);
   applyBlockPreset(state.presets[name]);state.preset=name;renderBlocks();persist();
 }
 function syncMapType() {
@@ -632,21 +636,36 @@ async function clearCache() {
   } catch (error) { $('cache-stats').textContent = `缓存清除失败：${error.message}`; handleError(error); }
   finally { updateButtons(); }
 }
-async function initializeEngine() {
+function recordStartupTimings(timings) {
+  globalThis.__SC_INIT_TIMINGS__ = timings;
+  $('engine-status').dataset.startupTimings = JSON.stringify(timings);
+}
+async function initializeEngine({reuseClient = false, startedAt = performance.now(), uiTimings = {}} = {}) {
   state.ready=false;updateButtons();$('runtime-alert').className='runtime-alert';$('runtime-alert').querySelector('strong').textContent='正在初始化多线程转换引擎';$('engine-status').className='engine-status';$('engine-status').lastChild.textContent='引擎加载中';
   invalidateNativeResults();
-  state.client?.dispose();state.client=new EngineClient();state.client.onProgress(progressUpdate);
+  if (!reuseClient || !state.client) {
+    state.client?.dispose();state.client=new EngineClient();state.client.onProgress(progressUpdate);
+  }
+  const client=state.client;
+  recordStartupTimings({...uiTimings, phase:'loading'});
   try{
     const threads=Math.trunc(number('thread-count',2,8)),memoryBudgetMB=Math.trunc(number('memory-budget',128,3072));
-    const result=await state.client.init({threads,memoryBudgetMB,cacheEnabled:checked('cache-enabled')});
+    const engineRequestedAt = performance.now();
+    const result=await client.init({threads,memoryBudgetMB,cacheEnabled:checked('cache-enabled')});
+    if(state.client!==client)return;
     if(result.blocks?.length)state.blocks=result.blocks;
     if(result.groups?.length)state.groups=result.groups;
+    if(result.baseColors?.length)state.baseColors=result.baseColors;
     applyMetadata(result.metadata);
     state.ready=true;$('runtime-alert').classList.add('ready');$('engine-status').classList.add('ready');$('engine-status').lastChild.textContent='多线程引擎就绪';$('thread-status').textContent=`${result.threads||threads} 个计算线程`;
     if(state.pendingSaved){restoreSettings(state.pendingSaved);state.pendingSaved=null;}
     renderBlocks();renderBlocklistChoices();updateButtons();status('多线程引擎已就绪。添加图像开始转化。');
+    recordStartupTimings({...uiTimings, ...result.startupTimings, phase:'ready',
+      engineRequestMs:performance.now()-engineRequestedAt, pageTotalMs:performance.now()-startedAt});
     if ($('settings-dialog').open) refreshCacheStats();
   }catch(error){
+    if(state.client!==client)return;
+    recordStartupTimings({...uiTimings, phase:'failed', pageTotalMs:performance.now()-startedAt});
     $('runtime-alert').classList.add('error');$('runtime-alert').querySelector('strong').textContent='多线程引擎暂不可用';$('runtime-alert').querySelector('p').textContent=error.message;
     $('engine-status').classList.add('error');$('engine-status').lastChild.textContent='引擎未就绪';status(error.message);console.error(error);updateButtons();
   }
@@ -715,15 +734,23 @@ function wireEvents() {
   window.addEventListener('beforeunload',event=>{if(state.busy){event.preventDefault();event.returnValue='';}});
 }
 async function boot() {
+  const startedAt = performance.now();
   $('thread-count').value=Math.min(8,Math.max(2,(navigator.hardwareConcurrency||4)-1));
   wireEvents();renderQueue();renderPreview();updateButtons();
+  state.client=new EngineClient();state.client.onProgress(progressUpdate);
+  const preparedClient=state.client;
+  // The worker returns its catalog before Wasm is ready; both the UI preset and
+  // every engine download can start without waiting for the other branch.
+  const preparation=state.client.prepare(), preset=loadPreset('vanilla');
+  let catalogReadyMs;
   try{
-    const response=await fetch('./assets/blocklists.json');if(!response.ok)throw new Error(`无法加载方块数据（HTTP ${response.status}）。`);
-    const catalog=await response.json();state.blocks=catalog.blocks||catalog.groups.flatMap(group=>group.blocks);state.groups=catalog.groups||[];state.baseColors=catalog.baseColors||[];
+    const [{catalog}]=await Promise.all([preparation.then(result=>{catalogReadyMs=performance.now()-startedAt;return result;}),preset]);
+    if(state.client!==preparedClient)return;
+    state.blocks=catalog.blocks||catalog.groups.flatMap(group=>group.blocks);state.groups=catalog.groups||[];state.baseColors=catalog.baseColors||[];
     await applyPreset('vanilla');
     try{const saved=JSON.parse(localStorage.getItem('slopecraft-web:settings:v1')||'null');if(saved){state.pendingSaved=saved;restoreSettings(saved);}}catch(error){console.warn('未恢复本地设置：',error);}
     state.settingsRestored=true;renderBlocks();renderBlocklistChoices();syncMapType();renderMapRanges();
-  }catch(error){handleError(error);$('block-grid').replaceChildren(text('div',error.message,'empty-state'));}
-  await initializeEngine();
+  }catch(error){if(state.client!==preparedClient)return;handleError(error);$('block-grid').replaceChildren(text('div',error.message,'empty-state'));}
+  await initializeEngine({reuseClient:true,startedAt,uiTimings:{catalogReadyMs,uiSetupMs:performance.now()-startedAt}});
 }
 boot().catch(handleError);

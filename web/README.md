@@ -23,6 +23,16 @@
 支持并允许该流程的 HTTPS 浏览器可通过静态文件补齐隔离响应头，无需单独修改云服务器的隔离配置；服务器直接配置 `Cross-Origin-Opener-Policy: same-origin`、`Cross-Origin-Embedder-Policy: require-corp` 仍可替代此流程。网络、证书、跳转、访问控制和生产服务器配置仍由部署者负责。
 仅提供多线程引擎。页面显示实际的注册、隔离和引擎状态，失败时明确提示，不加载单线程替代品。
 
+## 核心下载与启动
+
+`web/scripts/prepare-wasm.mjs` 生成 `wasm/slopecraft.wasm.gz` 和 `wasm/wasm-integrity.js`，资源准备脚本会调用它。当前原始核心 1,834,985 字节，gzip 624,441 字节，文件大小减少 66.0%；这不代表已测得相同比例的浏览器提速。
+
+`wasm-loader.js` 直接请求普通静态 gzip 文件，用原生 `DecompressionStream` 解压，再校验原始 WASM 的大小与 SHA-256。服务器若已通过 `Content-Encoding` 解压，加载器按实际字节判断并跳过重复解压。缺解压支持、gzip 无效或校验失败时，回退到同一多线程原始 WASM 并再次校验，不提供单线程引擎。
+
+`startup-resources.js` 从界面准备阶段就并行启动核心与方块目录加载，目录返回后同时下载三个内置 ZIP；原生注册仍按目录顺序进行。目录加载结果复用，不重复请求。核心 JS 与 WASM URL 带对应 SHA 查询参数，更新时须保持元数据、JS、原始 WASM 和 gzip 属于同一构建。
+
+保留部署目录中的 `wasm-loader.js`、`startup-resources.js` 和完整 `wasm/`（含 gzip 与元数据 JS），按正确 MIME 提供 JavaScript 文件。压缩加载不要求修改服务器 `Content-Encoding` 或限速配置，HTTPS、跨源隔离和多线程条件仍适用。具体浏览器耗时需另行测量。
+
 ## 功能
 
 1. 配置：十二个 Java 版本（1.12–1.21、26.1.2、26.2），立体／平面／纯文件地图画；原版、自定义和 Quark 三个内置方块库（336 个方块），四套原版预设，自定义预设导入导出，逐基色选择与批量材质偏好；当前颜色表查看／PNG／CSV，以及方块列表测试结构导出。
@@ -64,7 +74,7 @@ node web/scripts/check-static.mjs
 `node web/scripts/package-dependencies.mjs` 从同一构建目录收集对应依赖源码和许可证，再由静态打包脚本生成包含这些文件的源码包。当前没有已发布的 Release 或版本标签。
 本机验收使用 `node web/scripts/preview.mjs`，只监听回环地址。它是开发工具，不是生产服务器配置。
 
-实际引擎和独立格式解析测试通过 133 项，检查范围及证据限制见 [tests/parity-checklist.md](tests/parity-checklist.md)。
+实际引擎和独立格式解析测试通过 156 项，检查范围及证据限制见 [tests/parity-checklist.md](tests/parity-checklist.md)。
 基准用 `node web/tests/benchmark.mjs` 重现；[test-results/benchmark-node.json](test-results/benchmark-node.json) 是 Node WASM 单次测量，不能当作浏览器或手机性能。
 浏览器另行验证图像导入、转换、构建、材料、下载、缓存和响应式界面。
 导出通过独立解析器检查结构语义；未宣称每种格式都已在 Minecraft 游戏内逐一导入验证。

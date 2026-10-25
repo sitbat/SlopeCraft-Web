@@ -21,6 +21,15 @@ Initial snapshot of the independent [SlopeCraft Web repository](https://github.c
   page. The engine still requires confirmed isolation and uses pthreads only.
   Startup was checked in a Windows Chromium browser on loopback secure contexts with no
   server isolation headers, at both the origin root and a subdirectory.
+- Added a precompressed pthread WASM transport: the current 1,834,985-byte core
+  has a 624,441-byte gzip companion (66.0% smaller). Browser-native decoding
+  handles ordinary gzip files and already-decoded responses, verifies raw size
+  and SHA-256, and can fall back to the same verified multithreaded raw WASM.
+  Core JS/WASM URLs use hash query parameters without requiring server encoding
+  or rate-limit changes.
+- Start core and catalog preparation together, then download the three bundled
+  block ZIPs in parallel while preserving ordered native registration and reusing
+  the catalog request. These changes do not claim measured browser-startup gains.
 - Added independent NBT/PNG validation, actual pthread work counters, browser
   checks, reproducible Node benchmarks and a Web build/test workflow.
 

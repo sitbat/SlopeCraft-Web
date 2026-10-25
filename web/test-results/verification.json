@@ -54,7 +54,7 @@
     ]
   },
   "testSummary": {
-    "passed": 133,
+    "passed": 156,
     "failed": 0,
     "skipped": 0
   },
@@ -94,7 +94,11 @@
       "functionalCheck": "256x192 PNG, Lab00 with dithering, native build and browser Litematica download",
       "downloadIndependentValidation": {
         "bytes": 90366,
-        "size": [258, 187, 194],
+        "size": [
+          258,
+          187,
+          194
+        ],
         "paletteEntries": 34,
         "valid": true
       },
@@ -102,5 +106,111 @@
       "cloudDeploymentVerified": false,
       "physicalMobileDeviceTested": false
     }
+  },
+  "startupOptimization": {
+    "verifiedOn": "2026-10-25",
+    "wasmBytes": 1834985,
+    "gzipBytes": 624441,
+    "reductionPercent": 66,
+    "wasmLoaderTestsPassed": 15,
+    "parallelStartupTestsPassed": 8,
+    "rawWasmSHA256": "96323e4ab57fa59a13a2b7373042e24d05464d22094d88350dcc2b33b1a6ff2c",
+    "browser": {
+      "surface": "Windows Chromium in-app browser",
+      "hosting": "HTTP loopback secure contexts without COOP/COEP",
+      "gzip": {
+        "catalogReadyMs": 19.71000000089407,
+        "uiSetupMs": 35.875,
+        "catalogMs": 5.019999995827675,
+        "blocklistDownloadMs": 14.875,
+        "coreReadyMs": 63.14000000059605,
+        "nativeRegistrationMs": 31.304999999701977,
+        "workerTotalMs": 94.49000000208616,
+        "wasm": {
+          "source": "gzip",
+          "bodyBytes": 624441,
+          "encodedContentLength": 624441,
+          "decodedBytes": 1834985,
+          "downloadMs": 6.4849999994039536,
+          "decompressMs": 4.5,
+          "verifyMs": 1.1750000044703484,
+          "totalMs": 12.209999993443489,
+          "fallbackReason": null
+        },
+        "phase": "ready",
+        "engineRequestMs": 84.5949999988079,
+        "pageTotalMs": 120.93999999761581
+      },
+      "alreadyDecoded": {
+        "catalogReadyMs": 18.609999999403954,
+        "uiSetupMs": 34.42000000178814,
+        "catalogMs": 5.554999999701977,
+        "blocklistDownloadMs": 2.8200000002980232,
+        "coreReadyMs": 49.82500000298023,
+        "nativeRegistrationMs": 31.529999993741512,
+        "workerTotalMs": 81.39999999850988,
+        "wasm": {
+          "source": "decoded-gzip-response",
+          "bodyBytes": 1834985,
+          "encodedContentLength": 624441,
+          "decodedBytes": 1834985,
+          "downloadMs": 9.870000004768372,
+          "decompressMs": 0,
+          "verifyMs": 1.2249999940395355,
+          "totalMs": 11.140000000596046,
+          "fallbackReason": null
+        },
+        "phase": "ready",
+        "engineRequestMs": 65.65499999374151,
+        "pageTotalMs": 100.40999999642372
+      },
+      "rawFallback": {
+        "catalogReadyMs": 19.765000000596046,
+        "uiSetupMs": 36.274999998509884,
+        "catalogMs": 5.660000003874302,
+        "blocklistDownloadMs": 3.1400000005960464,
+        "coreReadyMs": 49.57000000029802,
+        "nativeRegistrationMs": 31.63000000268221,
+        "workerTotalMs": 81.24500000476837,
+        "wasm": {
+          "source": "raw",
+          "bodyBytes": 1834985,
+          "encodedContentLength": 1834985,
+          "decodedBytes": 1834985,
+          "downloadMs": 8.130000002682209,
+          "decompressMs": 0,
+          "verifyMs": 1.214999996125698,
+          "totalMs": 10.71000000089407,
+          "fallbackReason": "无法完整加载 WASM 资源（HTTP 404）。"
+        },
+        "phase": "ready",
+        "engineRequestMs": 63.29500000178814,
+        "pageTotalMs": 99.92499999701977
+      },
+      "initialRequests": {
+        "catalog": 1,
+        "gzip": 1,
+        "raw": 0,
+        "blocklistZips": [
+          1,
+          1,
+          1
+        ]
+      },
+      "threadSettingRestart": [
+        3,
+        8
+      ],
+      "litematic": {
+        "valid": true,
+        "size": [
+          258,
+          187,
+          194
+        ]
+      },
+      "cloudDeploymentVerified": false
+    },
+    "limits": "Loopback timings are not public-network or mobile performance; gzip body bytes differ from network bytes when HTTP already decoded the response."
   }
 }

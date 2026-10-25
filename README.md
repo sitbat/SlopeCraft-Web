@@ -48,6 +48,16 @@ npm run preview
 
 **仅提供多线程引擎，没有单线程回退。** HTTPS 本身不等于隔离成功；如果 Worker 注册、接管或隔离检查未完成，页面会显示实际状态，而不会提前宣称引擎已就绪。
 
+## 压缩与并行启动
+
+静态包同时保留原始多线程 WASM 和预生成的 gzip 文件。当前原文件为 **1,834,985 字节**，gzip 为 **624,441 字节**，文件大小减少 **66.0%**；这一比例不是浏览器启动耗时的测量结果。
+
+浏览器把 `wasm/slopecraft.wasm.gz` 当作普通静态文件请求，使用原生 `DecompressionStream` 解压；若服务器已经按 `Content-Encoding` 自动解压，则按实际 WASM 字节识别并直接使用，避免重复解压。解压后的字节数和 SHA-256 必须与 `wasm/wasm-integrity.js` 一致。缺少解压支持，或 gzip 下载、格式、完整性检查失败时，只回退到同一多线程引擎的原始 `slopecraft.wasm`，仍执行完整性校验。
+
+界面开始准备时，同时加载核心与方块目录；目录返回给界面时立即并行下载三个内置方块 ZIP。原生库注册仍按目录顺序执行，目录请求通过同一准备结果复用。核心 JS 和 WASM 的 URL 使用对应 SHA 查询参数，减少新旧资源缓存错配。
+
+部署时保留 `wasm-loader.js`、`startup-resources.js` 以及完整 `wasm/` 目录，尤其是 `slopecraft.wasm.gz` 与 `wasm-integrity.js`；JavaScript 文件应按正确 MIME 类型提供，并整体更新同一构建产物。`prepare-assets` 会调用 `web/scripts/prepare-wasm.mjs` 重新生成压缩文件和元数据。无需为此添加服务器 `Content-Encoding` 规则或修改限速配置；多线程与隔离要求保持不变。
+
 ## 从源码构建引擎
 
 预览可用 Node.js 22+；开发与 CI 使用 Node.js 24。完整引擎构建还需要 CMake 3.29+、Ninja，以及已安装并激活的 **Emscripten 4.0.23**。将 `EMSDK` 设置为 SDK 根目录；`CMAKE`、`NINJA` 可按需指定可执行文件路径。
@@ -76,7 +86,7 @@ node web/scripts/check-static.mjs
 node web/tests/benchmark.mjs
 ```
 
-静态文件校验需先执行 `npm run build`。测试加载真实的多线程 WASM，不用 JavaScript 近似算法替代。当前保存的验收记录为 **133 项测试通过**，覆盖算法、并行工作计数、地图分割、结构语义、透明策略、方块图标与原生缓存。详见[功能核对表](web/tests/parity-checklist.md)和[验收记录](web/test-results/verification.json)。
+静态文件校验需先执行 `npm run build`。测试加载真实的多线程 WASM，不用 JavaScript 近似算法替代。当前保存的验收记录为 **156 项测试通过**，覆盖算法、并行工作计数、地图分割、结构语义、透明策略、方块图标与原生缓存。详见[功能核对表](web/tests/parity-checklist.md)和[验收记录](web/test-results/verification.json)。
 
 浏览器已在 Windows Chromium 环境验收导入、转换、构建、材料、下载、缓存和 390／633／1280 像素宽度布局。响应式视口测试不代表手机真机测试；Node 基准不代表浏览器性能。导出文件经过独立格式解析，尚未逐种在 Minecraft 内导入验收。
 

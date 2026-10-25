@@ -82,6 +82,8 @@ py/outputs
 
 ### Web generated files ###
 /web/dist/
+/web/wasm/slopecraft.wasm.gz
+/web/wasm/wasm-integrity.js
 /web/dependency-sources/
 /web/assets/blocks/
 /web/assets/blocklists/

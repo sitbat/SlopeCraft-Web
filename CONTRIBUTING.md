@@ -52,6 +52,29 @@ For a dependency update, review its source/license changes, update the pinned
 version and hash together, rebuild, and regenerate the matching dependency source
 bundle. Do not silently disable checksum verification to make a download pass.
 
+## Compressed core and startup resources
+
+`web/scripts/prepare-assets.mjs` invokes `prepare-wasm.mjs`. After rebuilding
+WASM, regenerate `web/wasm/slopecraft.wasm.gz` and
+`web/wasm/wasm-integrity.js` before tests and packaging. Keep these files,
+`wasm-loader.js`, `startup-resources.js`, the core JS and raw WASM together in
+the static package. Core-JS and WASM URL versions come from the metadata hashes;
+do not hand-edit them or mix artifacts from separate builds.
+
+The loader fetches gzip as a normal static resource, uses native
+`DecompressionStream`, detects an already-decoded response from its actual
+bytes, and verifies decoded size and SHA-256. Validate gzip success,
+already-decoded responses, invalid/missing gzip and missing decompression support.
+Fallback must use the same verified pthread raw WASM, never a single-thread engine. No server `Content-Encoding` or rate-limit change is
+required for this transport.
+
+UI preparation starts the core and catalog concurrently; catalog completion starts
+all three block ZIP downloads together. Preserve catalog-result reuse and ordered
+native registration. Tests should exercise request counts, dependency ordering and
+failure/retry behavior. Browser timing measurements must identify the environment
+and separate download/decompression/verification from initialization; compressed
+file-size reduction alone is not evidence of a browser-startup speedup.
+
 ## Validation
 
 The tests load the real pthread Wasm artifact. A missing compiled core fails the
