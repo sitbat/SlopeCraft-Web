@@ -1,0 +1,52 @@
+{
+  "dependencies": {
+    "eigen": {
+      "archive": "eigen-5.0.1.tar.gz",
+      "sha256": "e9c326dc8c05cd1e044c71f30f1b2e34a6161a3b6ecf445d56b53ff1669e3dec"
+    },
+    "heu": {
+      "archive": "v1.6.5.2.tar.gz",
+      "sha256": "a817f14143c10ab6ee4fd1d0fb9e3b3a0eff9ec9ead9a1a9549e89d2dd10d736"
+    },
+    "xsimd": {
+      "archive": "13.2.0.tar.gz",
+      "sha256": "edd8cd3d548c185adc70321c53c36df41abe64c1fe2c67bc6d93c3ecda82447a"
+    },
+    "cereal": {
+      "archive": "v1.3.2.tar.gz",
+      "sha256": "16a7ad9b31ba5880dac55d62b5d6f243c3ebc8d46a3514149e56b5e7ea81f85f"
+    },
+    "json": {
+      "archive": "v3.11.3.tar.gz",
+      "sha256": "0d8ef5af7f9794e3263480193c491549b2ba6cc74bb018906202ada498a79406"
+    },
+    "magic_enum": {
+      "archive": "v0.9.7.tar.gz",
+      "sha256": "b403d3dad4ef542fdc3024fa37d3a6cedb4ad33c72e31b6d9bab89dcaf69edf7"
+    },
+    "boost": {
+      "archive": "boost_1_86_0.tar.gz",
+      "sha256": "2575e74ffc3ef1cd0babac2c1ee8bdb5782a0ee672b1912da40e5b4b591ca01f"
+    },
+    "zlib": {
+      "archive": "v1.3.1.tar.gz",
+      "sha256": "17e88863f3600672ab49182f217281b6fc4d3c762bde361935e436a95214d05c"
+    },
+    "png": {
+      "archive": "v1.6.50.tar.gz",
+      "sha256": "71158e53cfdf2877bc99bcab33641d78df3f48e6e0daad030afe9cb8c031aa46"
+    },
+    "zstd": {
+      "archive": "v1.5.7.tar.gz",
+      "sha256": "37d7284556b20954e56e1ca85b80226768902e2edabd3b649e9e72c0c9012ee3"
+    },
+    "libzip": {
+      "archive": "libzip-1.11.4.tar.xz",
+      "sha256": "8a247f57d1e3e6f6d11413b12a6f28a9d388de110adc0ec608d893180ed7097b"
+    },
+    "nbt": {
+      "archive": "23b955121b8217c1c348a9ed2483167a6f3ff4ad.tar.gz",
+      "sha256": "04c83294778a65de0540a628031152b7ec401fe3b50c1b40c5d6d0e6624513df"
+    }
+  }
+}

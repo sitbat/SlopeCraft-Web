@@ -1,0 +1,172 @@
+name: Web build and tests
+
+on:
+  push:
+    paths:
+      - '.github/workflows/web.yml'
+      - 'web/**'
+      - 'SlopeCraftL/**'
+      - 'utilities/**'
+      - 'Blocks_SCL/**'
+      - 'SlopeCraft/others/presets/**'
+      - 'package.json'
+      - 'LICENSE'
+  pull_request:
+    paths:
+      - '.github/workflows/web.yml'
+      - 'web/**'
+      - 'SlopeCraftL/**'
+      - 'utilities/**'
+      - 'Blocks_SCL/**'
+      - 'SlopeCraft/others/presets/**'
+      - 'package.json'
+      - 'LICENSE'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: web-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  web:
+    name: Wasm, tests and static package
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      EMSCRIPTEN_VERSION: '4.0.23'
+      CMAKE_VERSION: '3.31.6'
+      # Official emsdk revision; its release map includes Emscripten 4.0.23.
+      EMSDK_REVISION: d7b4130688bfa348392b921ab04015aa15c4f154
+      SC_BUILD_DIR: build/web
+      SC_BUILD_JOBS: '2'
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js 24
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+          package-manager-cache: false
+
+      - name: Install build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends ninja-build python3 python3-venv
+          python3 -m venv "$RUNNER_TEMP/web-build-tools"
+          "$RUNNER_TEMP/web-build-tools/bin/python" -m pip install --disable-pip-version-check "cmake==$CMAKE_VERSION"
+          echo "CMAKE=$RUNNER_TEMP/web-build-tools/bin/cmake" >> "$GITHUB_ENV"
+          node --version
+          "$RUNNER_TEMP/web-build-tools/bin/cmake" --version
+          ninja --version
+
+      - name: Validate pinned dependency hashes
+        run: |
+          node --input-type=module <<'NODE'
+          import {readFile} from 'node:fs/promises';
+          import assert from 'node:assert/strict';
+          const lock = JSON.parse(await readFile('web/dependency-lock.json', 'utf8'));
+          for (const name of ['eigen','heu','xsimd','cereal','json','magic_enum','boost','zlib','png','zstd','libzip','nbt']) {
+            assert.match(lock.dependencies[name]?.sha256 ?? '', /^[a-f0-9]{64}$/, `Missing SHA-256 pin: ${name}`);
+          }
+          NODE
+
+      - name: Install official Emscripten SDK
+        run: |
+          sdk_path="${RUNNER_TEMP}/emsdk"
+          git init "$sdk_path"
+          git -C "$sdk_path" remote add origin https://github.com/emscripten-core/emsdk.git
+          git -C "$sdk_path" fetch --depth 1 origin "$EMSDK_REVISION"
+          git -C "$sdk_path" checkout --detach FETCH_HEAD
+          "$sdk_path/emsdk" install "$EMSCRIPTEN_VERSION"
+          "$sdk_path/emsdk" activate "$EMSCRIPTEN_VERSION"
+          echo "EMSDK=$sdk_path" >> "$GITHUB_ENV"
+
+      - name: Build pthread and SIMD Wasm core
+        run: |
+          # SDK activation prepends its own Node version. Keep the project's
+          # Node 24 executable for the build driver; the SDK uses its own tools.
+          project_node="$(command -v node)"
+          source "$EMSDK/emsdk_env.sh"
+          emcc --version
+          "$project_node" web/scripts/build-wasm.mjs
+
+      - name: Prepare original assets
+        run: node web/scripts/prepare-assets.mjs
+
+      - name: Test real Wasm and independent file decoders
+        run: |
+          mkdir -p web/test-results
+          node --test --test-reporter=spec --test-reporter=junit \
+            --test-reporter-destination=stdout \
+            --test-reporter-destination=web/test-results/node-tests.xml \
+            web/tests/*.test.mjs
+
+      - name: Package matching dependency sources and licenses
+        run: |
+          node web/scripts/package-dependencies.mjs
+          git diff --exit-code -- web/dependency-lock.json
+          # Missing absolute-path matches in Ninja's dependency list would leave
+          # only two manually copied Boost files and an incomplete source bundle.
+          node --input-type=module <<'NODE'
+          import {access, readdir} from 'node:fs/promises';
+          import assert from 'node:assert/strict';
+          await access('web/dependency-sources/boost-used/boost/iostreams/filter/zstd.hpp');
+          await access('web/dependency-sources/boost-used/boost/iostreams/filtering_stream.hpp');
+          const files = await readdir('web/dependency-sources/boost-used/boost', {recursive: true, withFileTypes: true});
+          const count = files.filter(entry => entry.isFile()).length;
+          assert.ok(count > 100, `Incomplete Boost source subset: ${count} headers`);
+          console.log(`Packaged ${count} Boost headers`);
+          NODE
+
+      - name: Record this CI build's provenance
+        run: |
+          node --input-type=module <<'NODE'
+          import {readFile, writeFile} from 'node:fs/promises';
+          import {createHash} from 'node:crypto';
+          const wasm = await readFile('web/wasm/slopecraft.wasm');
+          const report = {
+            source: 'GitHub Actions', commit: process.env.GITHUB_SHA,
+            runId: process.env.GITHUB_RUN_ID, node: process.version,
+            emscripten: process.env.EMSCRIPTEN_VERSION,
+            cmake: process.env.CMAKE_VERSION,
+            emsdkRevision: process.env.EMSDK_REVISION,
+            wasmBytes: wasm.length, wasmSha256: createHash('sha256').update(wasm).digest('hex'),
+            testsPassed: true,
+          };
+          await writeFile('web/test-results/ci-build.json', JSON.stringify(report, null, 2) + '\n');
+          NODE
+
+      - name: Build static deployment archive
+        run: node web/scripts/build-static.mjs
+
+      - name: Verify static file hashes and Wasm
+        run: node web/scripts/check-static.mjs
+
+      - name: Stage deployment archive inside the workspace
+        run: cp ../SlopeCraft-Web-static.zip web/test-results/SlopeCraft-Web-static.zip
+
+      - name: Upload verified static archive
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          path: web/test-results/SlopeCraft-Web-static.zip
+          archive: false
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload test report
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: web-test-report
+          path: web/test-results/node-tests.xml
+          if-no-files-found: ignore
+          retention-days: 14

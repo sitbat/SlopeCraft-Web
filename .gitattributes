@@ -1,0 +1,31 @@
+*.zip -text
+
+* text=auto
+*.bat text eol=crlf
+*.sh text eol=lf
+*.jpg -text
+*.png -text
+
+*.h eol=crlf
+*.hpp eol=crlf
+*.c eol=crlf
+*.cpp eol=crlf
+*.ui eol=crlf
+*.cmake eol=crlf
+*.txt eol=crlf
+*.json eol=crlf
+*.in eol=crlf
+*.ts eol=crlf
+*.md eol=crlf
+
+# Keep browser sources and CI scripts portable across Windows and Linux.
+web/** text eol=lf
+.github/** text eol=lf
+# Preserve third-party license text verbatim, including its original whitespace.
+web/assets/licenses/** -whitespace
+*.wasm -text -diff
+*.png -text
+*.jpg -text
+*.ico -text
+*.gz -text
+*.xz -text

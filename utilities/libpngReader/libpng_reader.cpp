@@ -1,0 +1,220 @@
+//
+// Created by Joseph on 2024/4/8.
+//
+
+#include <format>
+#include <cstring>
+#include <cassert>
+#include <stdexcept>
+#include <png.h>
+
+#include "libpng_reader.h"
+
+struct read_buffer_wrapper {
+  const void* data;
+  int64_t offset{0};
+  int64_t max_length;
+};
+
+void png_callback_read_data_from_memory(png_struct* png, png_byte* data,
+                                        size_t read_length) {
+  read_buffer_wrapper* const ioptr =
+      reinterpret_cast<read_buffer_wrapper*>(png_get_io_ptr(png));
+  const size_t can_read_bytes = ioptr->max_length - ioptr->offset;
+  if (can_read_bytes < read_length) {
+    png_error(png, "EOF");
+    return;
+  }
+
+  memcpy(data, (char*)(ioptr->data) + ioptr->offset, read_length);
+  ioptr->offset += read_length;
+}
+
+std::tuple<std::expected<image_info, std::string>, std::string>
+parse_png_into_argb32(std::span<const uint8_t> encoded,
+                      std::vector<uint32_t>& pixels) noexcept {
+  std::function<uint32_t*(const image_info&)> allocator =
+      [&pixels](const image_info& info) {
+        pixels.resize(static_cast<size_t>(info.rows) *
+                      static_cast<size_t>(info.cols));
+        return pixels.data();
+      };
+
+  return parse_png_into_argb32_flex(encoded, allocator);
+}
+
+std::tuple<std::expected<image_info, std::string>, std::string>
+parse_png_into_argb32_flex(
+    std::span<const uint8_t> encoded,
+    const std::function<uint32_t*(const image_info&)> allocator) noexcept {
+  std::string warnings{};
+  if (encoded.size() < 8) {
+    return {
+      std::unexpected(std::format(
+          "File is too small ({} bytes) to be possible PNG", encoded.size())),
+      warnings};
+  }
+  try {
+    png_struct* png =
+#ifdef SLOPECRAFT_WEB
+        png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL,
+          [](png_structp, png_const_charp message) { throw std::runtime_error(message); },
+          [](png_structp, png_const_charp) {});
+#else
+        png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
+#endif
+    if (png == NULL) {
+      return {std::unexpected("Failed to create png read struct."), warnings};
+    }
+
+    png_info* info = png_create_info_struct(png);
+    if (info == NULL) {
+      png_destroy_read_struct(&png, &info, NULL);
+      return {std::unexpected("Failed to create png info struct."), warnings};
+    }
+
+    png_info* info_end = png_create_info_struct(png);
+    if (info_end == NULL) {
+      png_destroy_read_struct(&png, &info, &info_end);
+      return {std::unexpected("Failed to create png info_end struct."),
+              warnings};
+    }
+#ifdef SLOPECRAFT_WEB
+    struct png_cleanup {
+      png_struct*& png;
+      png_info*& info;
+      png_info*& end;
+      ~png_cleanup() { if (png) png_destroy_read_struct(&png,&info,&end); }
+    } cleanup{png,info,info_end};
+#endif
+    {
+      const auto compare_result = png_sig_cmp(encoded.data(), 0, 8);
+      if (compare_result not_eq 0) {
+        return {std::unexpected("Not a png file."), warnings};
+      }
+    }
+
+    // make a ioptr for libpng
+    read_buffer_wrapper wrapper;
+    wrapper.data = encoded.data();
+    wrapper.offset = 0;  // read file header
+    wrapper.max_length = encoded.size_bytes();
+
+    png_set_read_fn(png, &wrapper, png_callback_read_data_from_memory);
+
+    png_read_info(png, info);
+
+    uint32_t width{0}, height{0};
+    int bit_depth, color_type, interlace_method, compress_method, filter_method;
+    bool add_alpha = false;
+
+    png_get_IHDR(png, info, &width, &height, &bit_depth, &color_type,
+                 &interlace_method, &compress_method, &filter_method);
+
+    // cout << "\nwidth = " << width;
+    // cout << "\nheight = " << height;
+    // cout << "\nbit_depth = " << bit_depth;
+    // cout << "\ncolor_type = " << color_type << " (";
+
+    if (bit_depth > 8) {
+      png_set_strip_16(png);
+    }
+#ifdef SLOPECRAFT_WEB
+    // Normalize every PNG type to BGRA bytes (native ARGB32 on wasm's little
+    // endian memory). In particular 8-bit indexed PNGs may contain tRNS without
+    // already carrying alpha; treating them as RGBA shifts every pixel.
+    const bool has_transparency=png_get_valid(png,info,PNG_INFO_tRNS)!=0;
+    if(color_type==PNG_COLOR_TYPE_PALETTE) png_set_palette_to_rgb(png);
+    if(color_type==PNG_COLOR_TYPE_GRAY && bit_depth<8) png_set_expand_gray_1_2_4_to_8(png);
+    if(color_type==PNG_COLOR_TYPE_GRAY || color_type==PNG_COLOR_TYPE_GRAY_ALPHA) png_set_gray_to_rgb(png);
+    if(has_transparency) png_set_tRNS_to_alpha(png);
+    if(!(color_type&PNG_COLOR_MASK_ALPHA) && !has_transparency) png_set_add_alpha(png,0xff,PNG_FILLER_AFTER);
+    png_set_bgr(png);
+    png_set_interlace_handling(png);
+    png_read_update_info(png,info);
+#else
+    if (bit_depth < 8) png_set_expand(png);
+
+    switch (color_type) {
+      case PNG_COLOR_TYPE_GRAY:  // fixed
+        png_set_gray_to_rgb(png);
+        add_alpha = true;
+        // cout << "PNG_COLOR_TYPE_GRAY";
+        break;
+      case PNG_COLOR_TYPE_PALETTE:  // fixed
+
+        png_set_palette_to_rgb(png);
+        png_set_bgr(png);
+        {
+          int num_trans = 0;
+          png_get_tRNS(png, info, NULL, &num_trans, NULL);
+          if (num_trans <= 0) {
+            add_alpha = true;
+          }
+          // cout << "num_trans = " << num_trans << endl;
+        }
+
+        // cout << "PNG_COLOR_TYPE_PALETTE";
+        break;
+      case PNG_COLOR_TYPE_RGB:  // fixed
+        png_set_bgr(png);
+        add_alpha = true;
+        // cout << "PNG_COLOR_TYPE_RGB";
+        break;
+      case PNG_COLOR_TYPE_RGB_ALPHA:  // fixed
+        png_set_bgr(png);
+        // cout << "PNG_COLOR_TYPE_RGB_ALPHA";
+        break;
+      case PNG_COLOR_TYPE_GRAY_ALPHA:  // fixed
+        png_set_gray_to_rgb(png);
+        // png_set_swap_alpha(png);
+        // cout << "PNG_COLOR_TYPE_GRAY_ALPHA";
+        break;
+      default:
+        png_destroy_read_struct(&png, &info, &info_end);
+        return {
+          std::unexpected(std::format("Unknown color type {}", color_type)),
+          warnings};
+    }
+#endif
+    // cout << ")\n";
+    // #warning here
+
+    const auto img_info = image_info{height, width};
+    uint32_t* const pixels_data = allocator(img_info);
+    assert(pixels_data not_eq nullptr);
+    //    pixels.resize(height * width);
+    // img->resize(height, width);
+
+    std::vector<uint8_t*> row_ptrs;
+    row_ptrs.resize(height);
+    for (int r = 0; r < int(height); r++) {
+      row_ptrs[r] = reinterpret_cast<uint8_t*>(pixels_data + r * width);
+    }
+
+    png_read_image(png, row_ptrs.data());
+
+    if (add_alpha) {  // add alpha manually
+      for (int r = 0; r < int(height); r++) {
+        uint8_t* const current_row = row_ptrs[r];
+        for (int pixel_idx = width - 1; pixel_idx > 0; pixel_idx--) {
+          const uint8_t* const data_src = current_row + pixel_idx * 3;
+          uint8_t* const data_dest = current_row + pixel_idx * 4;
+
+          for (int i = 2; i >= 0; i--) {
+            data_dest[i] = data_src[i];
+          }
+          data_dest[3] = 0xFF;
+        }
+        current_row[3] = 0xFF;
+      }
+    }
+
+    // png_destroy_info_struct(png, &info);
+    png_destroy_read_struct(&png, &info, &info_end);
+
+    return {img_info, warnings};
+  } catch (const std::exception& e) {
+    return {std::unexpected(e.what()), warnings};
+  }
+}

@@ -1,0 +1,372 @@
+{
+  "schemaVersion": 1,
+  "status": "complete",
+  "startedAtUTC": "2026-10-25T05:40:03.459Z",
+  "environment": {
+    "runtime": "Node.js",
+    "version": "v24.19.0",
+    "platform": "win32",
+    "arch": "x64",
+    "release": "10.0.26300",
+    "cpu": "AMD Ryzen 9 9950X3D 16-Core Processor          ",
+    "logicalCpuCount": 32
+  },
+  "configuration": {
+    "threads": 4,
+    "runs": 1,
+    "algorithms": {
+      "R": "RGB_Better",
+      "L": "CIEDE2000"
+    },
+    "sizes": [
+      256,
+      512,
+      1024
+    ],
+    "dither": false,
+    "mapType": "slope",
+    "seed": 1371602926
+  },
+  "measurementNotes": [
+    "These are Node.js measurements on this host, not browser measurements.",
+    "Conversion timing includes the synchronous C ABI call, response parsing and copied RGBA preview; image generation and block-library loading are excluded.",
+    "The deterministic xorshift32 input contains opaque near-24-bit random RGB colors; unique-color counts are recorded to reveal color-cache reuse.",
+    "wasmMemoryMB is allocated WebAssembly linear-memory capacity, not live allocation size or process RSS. Capacity can remain high after tasks are freed.",
+    "Each case releases all native tasks. Export timing includes actual C++ encoding, MEMFS reading and output-byte copying, but excludes SHA-256 calculation.",
+    "Default runs=1 gives individual observations, not statistically stable performance estimates."
+  ],
+  "conversions": [
+    {
+      "width": 256,
+      "height": 256,
+      "algorithm": "R",
+      "dither": false,
+      "run": 1,
+      "pixels": 65536,
+      "uniqueInputColors": 65419,
+      "inputSha256": "cddb36ad4994933ef0890334e23ca7e83d848dd6d7852f4fd709ff6938f81ce9",
+      "elapsedMs": 61.233,
+      "megapixelsPerSecond": 1.07,
+      "workersProcessed": 4,
+      "workerItems": [
+        16331,
+        16096,
+        16336,
+        16656,
+        0,
+        0,
+        0,
+        0
+      ],
+      "wasmMemoryBeforeMB": 128,
+      "wasmMemoryMB": 128,
+      "nodeRssMB": 249.836,
+      "previewSha256": "a990afd0fb4e5dcf6bd3403f143458b22303467e7100f487aa4ba4b955f0ad4d",
+      "wasmMemoryAfterClearMB": 128
+    },
+    {
+      "width": 256,
+      "height": 256,
+      "algorithm": "L",
+      "dither": false,
+      "run": 1,
+      "pixels": 65536,
+      "uniqueInputColors": 65419,
+      "inputSha256": "cddb36ad4994933ef0890334e23ca7e83d848dd6d7852f4fd709ff6938f81ce9",
+      "elapsedMs": 348.81,
+      "megapixelsPerSecond": 0.188,
+      "workersProcessed": 4,
+      "workerItems": [
+        16368,
+        16368,
+        16347,
+        16336,
+        0,
+        0,
+        0,
+        0
+      ],
+      "wasmMemoryBeforeMB": 128,
+      "wasmMemoryMB": 128,
+      "nodeRssMB": 254.336,
+      "previewSha256": "25ac274c67548c8596aa4d13ee161b2d34a54620b9af285ae5e059f24acbbcdf",
+      "wasmMemoryAfterClearMB": 128
+    },
+    {
+      "width": 512,
+      "height": 512,
+      "algorithm": "R",
+      "dither": false,
+      "run": 1,
+      "pixels": 262144,
+      "uniqueInputColors": 260144,
+      "inputSha256": "4c77607da02e5873e0035ba1740a611b29996cfc0b9f1cbe76013a8351026fe6",
+      "elapsedMs": 219.994,
+      "megapixelsPerSecond": 1.192,
+      "workersProcessed": 4,
+      "workerItems": [
+        64752,
+        64896,
+        65296,
+        65200,
+        0,
+        0,
+        0,
+        0
+      ],
+      "wasmMemoryBeforeMB": 128,
+      "wasmMemoryMB": 128,
+      "nodeRssMB": 309.637,
+      "previewSha256": "e3b502697420636e2c8b43f13f3092b847a83bfec9ce4fac142dbe2943d5deb2",
+      "wasmMemoryAfterClearMB": 128
+    },
+    {
+      "width": 512,
+      "height": 512,
+      "algorithm": "L",
+      "dither": false,
+      "run": 1,
+      "pixels": 262144,
+      "uniqueInputColors": 260144,
+      "inputSha256": "4c77607da02e5873e0035ba1740a611b29996cfc0b9f1cbe76013a8351026fe6",
+      "elapsedMs": 1377.14,
+      "megapixelsPerSecond": 0.19,
+      "workersProcessed": 4,
+      "workerItems": [
+        65024,
+        65120,
+        64832,
+        65168,
+        0,
+        0,
+        0,
+        0
+      ],
+      "wasmMemoryBeforeMB": 128,
+      "wasmMemoryMB": 128,
+      "nodeRssMB": 325.805,
+      "previewSha256": "4971687605bd30c69811a15f06228e8e6d7288ed12a9d23c8d71e3d3cbd29249",
+      "wasmMemoryAfterClearMB": 128
+    },
+    {
+      "width": 1024,
+      "height": 1024,
+      "algorithm": "R",
+      "dither": false,
+      "run": 1,
+      "pixels": 1048576,
+      "uniqueInputColors": 1016514,
+      "inputSha256": "595a22db646af90177ba89afa1f6b84d296e76079c3fc5b6698633aded6d6e1a",
+      "elapsedMs": 1058.018,
+      "megapixelsPerSecond": 0.991,
+      "workersProcessed": 4,
+      "workerItems": [
+        251314,
+        255776,
+        253008,
+        256416,
+        0,
+        0,
+        0,
+        0
+      ],
+      "wasmMemoryBeforeMB": 128,
+      "wasmMemoryMB": 128,
+      "nodeRssMB": 630.793,
+      "previewSha256": "d60b0625bc21956c2af5518a1580cdd7ec246151918add75a214c23067a5dd23",
+      "wasmMemoryAfterClearMB": 128
+    },
+    {
+      "width": 1024,
+      "height": 1024,
+      "algorithm": "L",
+      "dither": false,
+      "run": 1,
+      "pixels": 1048576,
+      "uniqueInputColors": 1016514,
+      "inputSha256": "595a22db646af90177ba89afa1f6b84d296e76079c3fc5b6698633aded6d6e1a",
+      "elapsedMs": 6136.114,
+      "megapixelsPerSecond": 0.171,
+      "workersProcessed": 4,
+      "workerItems": [
+        255698,
+        253888,
+        253456,
+        253472,
+        0,
+        0,
+        0,
+        0
+      ],
+      "wasmMemoryBeforeMB": 128,
+      "wasmMemoryMB": 128,
+      "nodeRssMB": 597.57,
+      "previewSha256": "c98efdc0ee2bdcc0e8a3e569f5786532fd88dcc24a736baf34dd185f30651021",
+      "wasmMemoryAfterClearMB": 128
+    }
+  ],
+  "terrain": [
+    {
+      "width": 512,
+      "height": 512,
+      "run": 1,
+      "options": {
+        "maxHeight": 256,
+        "compression": 1,
+        "glassBridge": 1,
+        "bridgeInterval": 3,
+        "supportBlock": 0,
+        "fireproof": false,
+        "enderproof": false,
+        "connectMushroom": false
+      },
+      "prepareConversionMs": 183.365,
+      "buildMs": 4534.279,
+      "size": [
+        514,
+        35,
+        514
+      ],
+      "occupiedBlockCount": 734730,
+      "wasmMemoryMB": 128,
+      "exports": [
+        {
+          "format": "dat",
+          "elapsedMs": 30.146,
+          "fileCount": 16,
+          "bytes": 222433,
+          "files": [
+            {
+              "name": "map_0.dat",
+              "bytes": 13903,
+              "sha256": "c5663dd578a49535d8a112c9142f34dcfbff6c9bb3e6d5d071fce85eaef62a5d"
+            },
+            {
+              "name": "map_1.dat",
+              "bytes": 13912,
+              "sha256": "b101c3087136e940c2e4f8a6e008a5ec1b96ccaa5b211bfe17b3f092c0ae7a36"
+            },
+            {
+              "name": "map_10.dat",
+              "bytes": 13893,
+              "sha256": "a5b883850f9d39de422e353c78c38a96a73d09b7c1e5f3e28a6e252e64e44282"
+            },
+            {
+              "name": "map_11.dat",
+              "bytes": 13914,
+              "sha256": "7016c3c26d3f685e4475bbdd1fdb6a5ad7722e1e7f2ac8746d707fac3a6b2eb6"
+            },
+            {
+              "name": "map_12.dat",
+              "bytes": 13864,
+              "sha256": "ad6700c51d43c826206939476b9871dfb8c91184e1bf4be9c010cc21061c9b17"
+            },
+            {
+              "name": "map_13.dat",
+              "bytes": 13887,
+              "sha256": "05baf7b8a70388e36535a451995c0bcf2de95a1255903924545cac89aeddcaa8"
+            },
+            {
+              "name": "map_14.dat",
+              "bytes": 13913,
+              "sha256": "acfd36ef9d5ed17b0c0bb02afbe37dea8f5da539eaf597fb36102094d79453ab"
+            },
+            {
+              "name": "map_15.dat",
+              "bytes": 13878,
+              "sha256": "be68daad0e8a4b3285b66a605553f68c9812789b86feec0d97a89ba026751615"
+            },
+            {
+              "name": "map_2.dat",
+              "bytes": 13903,
+              "sha256": "e8cb9aaf9e9198aa7e5545e7cd4e1b4392708a82c1ce1997edc790be67aad721"
+            },
+            {
+              "name": "map_3.dat",
+              "bytes": 13896,
+              "sha256": "6bbf4c5637670f988289327c245d04106b3c06b4988331719a9c6dc04b5a39ed"
+            },
+            {
+              "name": "map_4.dat",
+              "bytes": 13881,
+              "sha256": "dd50978dc0a8681fae73a0ae76e4bf867e2a3be2d76aacd6abb4b1ff3fb86bad"
+            },
+            {
+              "name": "map_5.dat",
+              "bytes": 13940,
+              "sha256": "9b07fd7537689c6d3d3201070b37f3a85741fcf5f71e0035a4af0cdbfe42b0a6"
+            },
+            {
+              "name": "map_6.dat",
+              "bytes": 13940,
+              "sha256": "d6cd7ede103ba7ba90c4dfd9330a96f35d0501fe733249a4e4e16a7238484cb0"
+            },
+            {
+              "name": "map_7.dat",
+              "bytes": 13907,
+              "sha256": "62b33a8ac2d6dc154333fcb989327015f8ef7c6fd4cb039e1374bcb991278a79"
+            },
+            {
+              "name": "map_8.dat",
+              "bytes": 13920,
+              "sha256": "91844de7369fdf4cf7eed530789df74f8292e45ef0e11bd53a2965ce4514435e"
+            },
+            {
+              "name": "map_9.dat",
+              "bytes": 13882,
+              "sha256": "01f36f9381d76cf593ca0976f2a19470f5ad2fb3214c3fd76a254c9f6daf7998"
+            }
+          ]
+        },
+        {
+          "format": "litematic",
+          "elapsedMs": 279.433,
+          "fileCount": 1,
+          "bytes": 841678,
+          "files": [
+            {
+              "name": "benchmark-512.litematic",
+              "bytes": 841678,
+              "sha256": "c9f7d8278d00373787073072979783f2701c8a8622559b4bb7714960331eb25d"
+            }
+          ]
+        },
+        {
+          "format": "nbt",
+          "elapsedMs": 501.885,
+          "fileCount": 1,
+          "bytes": 2696601,
+          "files": [
+            {
+              "name": "benchmark-512.nbt",
+              "bytes": 2696601,
+              "sha256": "369b853931d0dd4ee33f1858e9971cf041cea2f4a182c346ca269b83b37eca6b"
+            }
+          ]
+        },
+        {
+          "format": "schem",
+          "elapsedMs": 526.005,
+          "fileCount": 1,
+          "bytes": 759218,
+          "files": [
+            {
+              "name": "benchmark-512.schem",
+              "bytes": 759218,
+              "sha256": "93816552b030e2d6147eb7a78b95a87c12ddcc64e96554b35f92280453e7d77e"
+            }
+          ]
+        }
+      ],
+      "wasmMemoryAfterClearMB": 128
+    }
+  ],
+  "artifact": {
+    "version": "5.4.1",
+    "moduleFile": "D:\\System\\Documents\\Codex\\2026-10-25\\https-github-com-slopecraft-slopecraft-https\\outputs\\SlopeCraft-Web\\web\\wasm\\slopecraft.js",
+    "moduleSha256": "0fe665dbc64b118dd256fcf9badb50e6305f47431168a967198666db0657052e",
+    "wasmSha256": "96323e4ab57fa59a13a2b7373042e24d05464d22094d88350dcc2b33b1a6ff2c",
+    "wasmBytes": 1834985
+  },
+  "completedAtUTC": "2026-10-25T05:40:19.188Z"
+}

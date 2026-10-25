@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "engineTests": {
+    "passed": 110,
+    "failed": 0,
+    "skipped": 0,
+    "wasmSHA256": "96323e4ab57fa59a13a2b7373042e24d05464d22094d88350dcc2b33b1a6ff2c"
+  },
+  "browser": {
+    "surface": "Codex Chromium in-app browser on Windows",
+    "viewports": [
+      {
+        "width": 1280,
+        "height": 900
+      },
+      {
+        "width": 633,
+        "height": null,
+        "note": "Default narrow Codex pane; width measured"
+      },
+      {
+        "width": 390,
+        "height": 844
+      }
+    ],
+    "checks": [
+      "No page horizontal overflow after long-block-ID layout repair",
+      "PNG image import, Lab00 dithering and preview",
+      "Slope build with lossless compression and glass bridges",
+      "Material count and valid Litematica download (258x187x194,63414 blocks)",
+      "IndexedDB cache save/restore and count/byte statistics",
+      "Cache clear preserves image, invalidates result and export recomputes",
+      "Four map dat files downloaded in valid ZIP and independently decoded",
+      "Palette tool without image returns 180 allowed colors",
+      "Test-blocklist tool exports independently decoded native structure",
+      "Packaged dist subdirectory initializes all local resources",
+      "Custom Quark ZIP imports 43 blocks and shows native 16x16 PNG icon on desktop"
+    ],
+    "consoleErrors": [],
+    "physicalMobileDeviceTested": false
+  },
+  "limitations": [
+    "No Minecraft in-game import test",
+    "Node benchmark is not browser performance",
+    "No VisualCraft or separate desktop utilities"
+  ],
+  "packagingTests": {
+    "passed": 3,
+    "failed": 0,
+    "checks": [
+      "Public-source allowlist excludes credentials and generated directories",
+      "Configured build directory excluded from source archive",
+      "Output cleanup preserves sources and refuses unsafe targets"
+    ]
+  },
+  "testSummary": {
+    "passed": 113,
+    "failed": 0,
+    "skipped": 0
+  }
+}

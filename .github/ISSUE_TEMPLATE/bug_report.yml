@@ -1,0 +1,52 @@
+name: 问题反馈
+description: 报告 SlopeCraft Web 的运行、转换、构建或导出问题。
+title: "[Bug] "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        此表单用于本仓库的网页移植版。运行条件和构建方法见 [项目说明](https://github.com/sitbat/SlopeCraftWeb#readme)，地图画原理与教程见 [原项目文档](https://slopecraft.readthedocs.io/)。
+        请先搜索 [本仓库已有问题](https://github.com/sitbat/SlopeCraftWeb/issues)，有相同情况可补充到原 issue。
+  - type: textarea
+    id: description
+    attributes:
+      label: 问题与预期行为
+      description: 描述实际发生了什么，以及你希望发生什么。
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: 复现步骤
+      description: 写出使用的操作、选项和图像尺寸；涉及转换时注明算法、抖动、游戏版本和地图类型。
+      placeholder: |
+        1. 用 npm run preview 本地运行，或打开自行托管的页面
+        2. 导入一张……像素的图像，选择……
+        3. 点击……后出现……
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: 运行环境
+      description: 引擎初始化失败时，请补充设置对话框中的安全上下文、跨源隔离和 SharedArrayBuffer 状态。
+      value: |
+        - 提交号（git rev-parse --short HEAD）：
+        - 操作系统：
+        - 浏览器及版本：
+        - 运行方式（本地预览／自行托管）：
+        - 线程数与内存预算：
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: 错误信息或日志
+      description: 可粘贴页面提示、浏览器控制台或构建输出；提交前移除密钥等私人信息。
+      render: text
+  - type: textarea
+    id: example
+    attributes:
+      label: 截图或最小示例（可选）
+      description: 可附能公开分享的最小图像、方块包或导出文件，以帮助复现。

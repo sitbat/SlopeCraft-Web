@@ -1,0 +1,236 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE TS>
+<TS version="2.1" language="en_US">
+<context>
+    <name>SlopeCraft::SCLTranslator</name>
+    <message>
+        <location filename="../color_table.cpp" line="119"/>
+        <source>SlopeCraftL可用颜色过少：仅仅%1种。
+可用的基色：%2</source>
+        <translation>Too few colors for SlopeCraftL: only %1 color(s).
+Avaibale base colors: %2</translation>
+    </message>
+    <message>
+        <location filename="../color_table.cpp" line="204"/>
+        <source>无法将缓存保存至文件 %1：%2</source>
+        <translation>Failed to save cache to file &quot;%1&quot;: %2</translation>
+    </message>
+    <message>
+        <location filename="../color_table.cpp" line="212"/>
+        <location filename="../structure_3D.cpp" line="520"/>
+        <location filename="../structure_3D.cpp" line="542"/>
+        <source>异常：%1</source>
+        <translation>Caught exception: %1</translation>
+    </message>
+    <message>
+        <location filename="../color_table.cpp" line="344"/>
+        <source>文件名必须以 *.nbt 结尾</source>
+        <translation>File name should end with &quot;.nbt&quot;</translation>
+    </message>
+    <message>
+        <location filename="../color_table.cpp" line="404"/>
+        <source>导出结构方块文件%1失败，错误码%2，详情：%3</source>
+        <translation>Failed to export structure file %1, error code = %2, detail: %3</translation>
+    </message>
+    <message>
+        <location filename="../color_table.cpp" line="423"/>
+        <source>遇到无效方块id &quot;%1&quot;</source>
+        <translation>Found invalid block id &quot;%1&quot;</translation>
+    </message>
+    <message>
+        <location filename="../SlopeCraftL.cpp" line="67"/>
+        <source>函数SCL_create_block_list_from_buffer遇到无效的输入，缓冲区为空</source>
+        <translation>SCL_create_block_list_from_buffer met invalid value, either buffer is nullptr or buffer size is 0</translation>
+    </message>
+    <message>
+        <location filename="../structure_3D.cpp" line="26"/>
+        <source>允许最大高度应该不低于14，但是遇到了%1</source>
+        <translation>Max allowed height should be &gt;= 14, but found %1</translation>
+    </message>
+    <message>
+        <location filename="../structure_3D.cpp" line="84"/>
+        <source>分配内存失败，需要%1GiB。详情：&quot;%2&quot;</source>
+        <translation>Failed to allocate memory for this structure, required %1 GiB. The exception says: &quot;%2&quot;</translation>
+    </message>
+    <message>
+        <location filename="../structure_3D.cpp" line="348"/>
+        <source>SlopeCraftL只能把平面地图画导出为平面示意图，但是遇到了%1</source>
+        <translation>SlopeCraftL can only export flat diagram for flat maps, but found %1</translation>
+    </message>
+    <message>
+        <location filename="../structure_3D.cpp" line="379"/>
+        <source>SlopeCraftL内部错误：%1</source>
+        <translation>SlopeCraftL internal error: %1</translation>
+    </message>
+    <message>
+        <location filename="../structure_3D.cpp" line="408"/>
+        <source>SlopeCraftL内部错误。无法找到与方块%1匹配的图像。3D结构中对应的方块索引为%2。整个方块列表如下：%3</source>
+        <translation>SlopeCraftL internal error. Failed to find block image &quot;for \&quot;%1\&quot;. In the 3d structure, the corresponding block idx is %2.\nThe whole block palette is as below: %3</translation>
+    </message>
+    <message>
+        <location filename="../structure_3D.cpp" line="481"/>
+        <source>序列化时遇到负尺寸：%1行%2列</source>
+        <translation>Found negative shape when deserializing: %1 rows and %2 cols</translation>
+    </message>
+    <message>
+        <location filename="../converted_image.cpp" line="102"/>
+        <source>无法创建nbt文件 %1</source>
+        <translation>Failed to create nbt file %1</translation>
+    </message>
+    <message>
+        <location filename="../converted_image.cpp" line="134"/>
+        <location filename="../converted_image.cpp" line="193"/>
+        <source>无效的游戏版本 %1</source>
+        <translation>Wrong game version %1</translation>
+    </message>
+    <message>
+        <location filename="../converted_image.cpp" line="260"/>
+        <source>SlopeCraftL内部错误：在原版地图画中发现阴影&gt;=3的的地图色。地图画内容（地图色，列优先）：
+%1</source>
+        <translation>SlopeCraftL internal error: found mapcolor with shadow &gt;=3 in vanilla maps. Map contents (mapcolor, col-major): %1</translation>
+    </message>
+    <message>
+        <location filename="../converted_image.cpp" line="313"/>
+        <source>3D结构的第%1列压缩失败。要求最大高度&lt;=%2，但是只能压缩到%3</source>
+        <translation>Failed to compress the 3D structure at column %1. You have required that max height ≤ %2 , but SlopeCraft is only able to compress this column to max height = %3</translation>
+    </message>
+    <message>
+        <location filename="../converted_image.cpp" line="385"/>
+        <source>打开文件%1失败</source>
+        <translation>Failed to open file %1</translation>
+    </message>
+    <message>
+        <location filename="../converted_image.cpp" line="397"/>
+        <source>文件%1不存在</source>
+        <translation>File %1 doesn&apos;t exist</translation>
+    </message>
+    <message>
+        <location filename="../converted_image.cpp" line="402"/>
+        <source>加载缓存失败，%1包含错误</source>
+        <translation>Failed to load cache from %1, the cache is incorrect</translation>
+    </message>
+    <message>
+        <location filename="../converted_image.cpp" line="524"/>
+        <source>错误的地图尺寸：%1行，%2列</source>
+        <translation>Invalid map size: %1 rows, %2 cols</translation>
+    </message>
+    <message>
+        <location filename="../block_list.cpp" line="53"/>
+        <source>无效的方块基色 %1</source>
+        <translation>Invalid base color: %1</translation>
+    </message>
+    <message>
+        <location filename="../block_list.cpp" line="67"/>
+        <source>无效的方块版本 %1</source>
+        <translation>Invalid block version: %1</translation>
+    </message>
+    <message>
+        <location filename="../block_list.cpp" line="82"/>
+        <source>无效的方块id %1</source>
+        <translation>Invalid block id: %1</translation>
+    </message>
+    <message>
+        <location filename="../block_list.cpp" line="88"/>
+        <source>无效的1.12方块id %1</source>
+        <translation>Invalid 1.12 block id: %1</translation>
+    </message>
+    <message>
+        <location filename="../block_list.cpp" line="112"/>
+        <source>无效的一组方块数量 %1</source>
+        <translation>Invalid stack size: %1</translation>
+    </message>
+    <message>
+        <location filename="../block_list.cpp" line="132"/>
+        <source>方块属性needStone必须是bool或者版本数组</source>
+        <translation>needStone must be boolean or array of versions</translation>
+    </message>
+    <message>
+        <location filename="../block_list.cpp" line="175"/>
+        <source>无法解析 metainfo.json：%1</source>
+        <translation>Failed to parse metainfo.json: %1</translation>
+    </message>
+    <message>
+        <location filename="../block_list.cpp" line="185"/>
+        <source>无法解压 metainfo.json：%1</source>
+        <translation>Failed to extract metainfo.json: %1</translation>
+    </message>
+    <message>
+        <location filename="../block_list.cpp" line="207"/>
+        <source>方块列表压缩包中缺少文件 &quot;%1&quot;</source>
+        <translation>File &quot;%1&quot; is missing from archive</translation>
+    </message>
+    <message>
+        <location filename="../block_list.cpp" line="219"/>
+        <source>无法获取方块列表中文件%1的大小：%2，错误码%3</source>
+        <translation>Failed to get size of file %1 in block list: %2; error code %3</translation>
+    </message>
+    <message>
+        <location filename="../block_list.cpp" line="236"/>
+        <source>无法从方块列表中解压文件%1：%2</source>
+        <translation>Failed to extract %1 from archive: %2</translation>
+    </message>
+    <message>
+        <location filename="../block_list.cpp" line="248"/>
+        <source>无法从方块列表中解压文件%1，应有%2字节，实际上只有%3字节：%4</source>
+        <translation>Failed to extract %1 from archive, expected %2 bytes but extracted %3 bytes; %4</translation>
+    </message>
+    <message>
+        <location filename="../block_list.cpp" line="278"/>
+        <source>方块列表中有metainfo.json，但是解析失败：%1
+</source>
+        <translation>metainfo.json exist in archive but failed to parse: %1
+</translation>
+    </message>
+    <message>
+        <location filename="../block_list.cpp" line="302"/>
+        <source>方块列表json应该直接包含json数组</source>
+        <translation>JSON should contain an array directly</translation>
+    </message>
+    <message>
+        <location filename="../block_list.cpp" line="320"/>
+        <source>无法解析第%1个方块：%2</source>
+        <translation>Failed to parse block at index %1: %2</translation>
+    </message>
+    <message>
+        <location filename="../block_list.cpp" line="335"/>
+        <source>解析json时遇到异常：%1</source>
+        <translation>nlohmann json exception: %1</translation>
+    </message>
+    <message>
+        <location filename="../block_list.cpp" line="349"/>
+        <source>%1缺少图片：%2
+</source>
+        <translation>%1, required by %2
+</translation>
+    </message>
+    <message>
+        <location filename="../block_list.cpp" line="364"/>
+        <source>无法读取图片%1：%2
+</source>
+        <translation>Failed to load image %1: %2
+</translation>
+    </message>
+    <message>
+        <location filename="../block_list.cpp" line="376"/>
+        <source>%1的尺寸错误，应当是16x16，但实际上是%2行%3列
+</source>
+        <translation>%1 has invalid size. Expected 16x16, but found %2 rows and %3 cols
+</translation>
+    </message>
+    <message>
+        <location filename="../block_list.cpp" line="407"/>
+        <source>无法打开压缩包%1：%2。libzip错误码：%3</source>
+        <translation>Failed to open archive %1: %2. libzip error code: %3</translation>
+    </message>
+    <message>
+        <location filename="../block_list.cpp" line="432"/>
+        <source>无法创建zip_source_t：%1</source>
+        <translation>Failed to create zip_source_t: %1</translation>
+    </message>
+    <message>
+        <location filename="../block_list.cpp" line="448"/>
+        <source>无法打开压缩包，zip_err错误码：%1，sys_err错误码：%2</source>
+        <translation>Failed to open archive, zip_err = %1, sys_err = %2</translation>
+    </message>
+</context>
+</TS>

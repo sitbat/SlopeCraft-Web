@@ -1,0 +1,104 @@
+*.idx
+compile_commands.json
+*.qm
+
+### C++ ###
+# Prerequisites
+*.d
+
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Fortran module files
+*.mod
+*.smod
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.exe
+*.out
+*.app
+
+### CMake ###
+.qt/
+CMakeLists.txt.user
+CMakeLists.txt.user.*
+CMakeCache.txt
+CMakeFiles
+CMakeScripts
+Testing
+Makefile
+cmake_install.cmake
+install_manifest.txt
+CTestTestfile.cmake
+_deps
+
+### Compiled Files ###
+moc*
+qrc*
+ui_*.h
+
+### CMake Install ###
+install/
+
+### macOS File System ###
+.DS_Store
+
+### 3rdParty libs ###
+3rdParty/*
+.vscode/settings.json
+
+### build ###
+build/*
+binaries/*
+.vscode/*
+.vs/*
+.cache/*
+
+### CLion ###
+.idea/*
+cmake-build-*
+
+### PyCharm ###
+py/preprocessed
+py/outputs
+
+### Web generated files ###
+/web/dist/
+/web/dependency-sources/
+/web/assets/blocks/
+/web/assets/blocklists/
+/web/assets/presets/
+/web/assets/blocklists.json
+/web/assets/LICENSE.txt
+/web/test-results/*
+!/web/test-results/benchmark-node.json
+!/web/test-results/verification.json
+/work/
+/node_modules/
+
+### Local credentials and environment ###
+.env
+.env.*
+.npmrc
+.pypirc
+*.pem
+*.p12
+*.pfx

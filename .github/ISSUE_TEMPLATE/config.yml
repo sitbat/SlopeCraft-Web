@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: SlopeCraft Web 使用与构建说明
+    url: https://github.com/sitbat/SlopeCraftWeb#readme
+    about: 查看网页运行条件、本地预览、源码构建及与桌面版的差异。
+  - name: 原项目地图画文档
+    url: https://slopecraft.readthedocs.io/
+    about: 地图画原理与原项目教程；网页移植版的问题请在当前仓库反馈。
