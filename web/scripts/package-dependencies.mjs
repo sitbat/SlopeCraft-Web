@@ -5,17 +5,28 @@ import path from 'node:path';
 import {createHash} from 'node:crypto';
 
 const root=fileURLToPath(new URL('../../',import.meta.url));
-const build=path.resolve(root,process.env.SC_BUILD_DIR || 'build/web');
+const build=path.resolve(root,process.env.SC_BUILD_DIR || 'build/web64');
+const cache=await readFile(path.join(build,'CMakeCache.txt'),'utf8').catch(error=>{if(error.code==='ENOENT')return '';throw error;});
+function sourceDirectory(name){
+  const match=cache.match(new RegExp(`^FETCHCONTENT_SOURCE_DIR_${name.toUpperCase()}:[^=]*=(.+)$`,'m'));
+  return match?path.resolve(match[1].trim()):path.join(build,'_deps',`${name}-src`);
+}
 const packages=['eigen','heu','xsimd','cereal','json','magic_enum','boost','zlib','png','zstd','libzip','nbt'];
 const sourceOutput=path.join(root,'web/dependency-sources');
 const licenseOutput=path.join(root,'web/assets/licenses');
 await mkdir(sourceOutput,{recursive:true});await mkdir(licenseOutput,{recursive:true});
 const lock={dependencies:{}};
 for(const name of packages){
-  const source=path.join(build,'_deps',`${name}-src`);
+  const source=sourceDirectory(name);
   await access(source);
-  const download=path.join(build,'_deps',`${name}-subbuild`,`${name}-populate-prefix/src`);
-  const filename=(await readdir(download)).find(file=>/\.tar\.(gz|xz)$/.test(file));
+  const candidates=[path.join(build,'_deps',`${name}-subbuild`,`${name}-populate-prefix/src`),
+    path.join(path.dirname(source),`${name}-subbuild`,`${name}-populate-prefix/src`)];
+  let download,filename;
+  for(const candidate of candidates){
+    const entries=await readdir(candidate).catch(error=>{if(error.code==='ENOENT')return [];throw error;});
+    filename=entries.find(file=>/\.tar\.(gz|xz)$/.test(file));
+    if(filename){download=candidate;break;}
+  }
   if(!filename)throw new Error(`Dependency source archive missing: ${name}`);
   const archive=await readFile(path.join(download,filename));
   lock.dependencies[name]={archive:filename,sha256:createHash('sha256').update(archive).digest('hex')};
@@ -31,7 +42,7 @@ for(const name of packages){
 const ninja=process.env.NINJA || 'ninja';
 const dependencies=spawnSync(ninja,['-C',build,'-t','deps'],{encoding:'utf8',maxBuffer:128*1024*1024,windowsHide:true});
 if(dependencies.status!==0)throw new Error(`Cannot enumerate compiled dependency headers: ${dependencies.stderr}`);
-const boostRoot=path.join(build,'_deps/boost-src');
+const boostRoot=sourceDirectory('boost');
 const boostFiles=new Set();
 for(const line of dependencies.stdout.split(/\r?\n/)){
   const filename=line.trim();

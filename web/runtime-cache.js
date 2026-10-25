@@ -9,7 +9,9 @@ export class RuntimeCache {
     if (this.database) return this.database;
     if (!globalThis.indexedDB) throw new Error('此浏览器未提供 IndexedDB');
     this.database = await new Promise((resolve, reject) => {
-      const request = indexedDB.open('slopecraft-compute-cache-v1', 1);
+      // cereal writes platform-sized fields: wasm32 snapshots must never be
+      // deserialized by the new 64-bit core, even in another active tab.
+      const request = indexedDB.open('slopecraft-compute-cache-memory64-v1', 1);
       request.onupgradeneeded = () => request.result.createObjectStore('snapshots', {keyPath:'key'});
       request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error);

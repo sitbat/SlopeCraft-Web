@@ -28,8 +28,20 @@ not additional programs shipped by this repository.
 The port reuses upstream conversion, compression, terrain construction and
 NBT/schematic algorithms. Web-specific code lives in `web/`; adaptations in
 `SlopeCraftL/` and `utilities/` remove Qt diagnostics from the browser build,
-use pthreads, adapt wasm32 index types, expose the JavaScript boundary and repair
-issues covered by conversion, texture, water and cache regression tests.
+use Memory64 and pthreads, adapt Eigen index types and the BigInt pointer boundary,
+and repair issues covered by conversion, texture, water and cache regression tests.
+The current build has a 16 GiB shared linear-memory maximum. Its configurable
+128–16384 MiB per-task estimate budget defaults to 1536 MiB and is exposed through
+engine metadata; it is not a physical-memory guarantee.
+
+The desktop program already cached conversion results for each image and
+algorithm. The Web UI adds explicit result selection, configuration restoration
+and independent side-by-side algorithm comparison. Each variant retains its own
+native identity for subsequent construction and exports. A 24-entry LRU and a
+256 MiB preview quota are separate from the resident-native estimate quota of
+half the applied calculation budget. Engine reloads and corresponding cache
+clears invalidate these variants; page reload does not restore the source-image
+pool.
 
 This is an independent Web port. It does not claim that the original SlopeCraft
 maintainers maintain or endorse this repository.

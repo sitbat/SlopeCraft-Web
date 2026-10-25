@@ -4,7 +4,9 @@
     "passed": 110,
     "failed": 0,
     "skipped": 0,
-    "wasmSHA256": "96323e4ab57fa59a13a2b7373042e24d05464d22094d88350dcc2b33b1a6ff2c"
+    "wasmSHA256": "96323e4ab57fa59a13a2b7373042e24d05464d22094d88350dcc2b33b1a6ff2c",
+    "historical": true,
+    "note": "Previous wasm32 baseline; current complete test count is in testSummary."
   },
   "browser": {
     "surface": "Codex Chromium in-app browser on Windows",
@@ -37,7 +39,9 @@
       "Custom Quark ZIP imports 43 blocks and shows native 16x16 PNG icon on desktop"
     ],
     "consoleErrors": [],
-    "physicalMobileDeviceTested": false
+    "physicalMobileDeviceTested": false,
+    "historical": true,
+    "wasmSHA256": "96323e4ab57fa59a13a2b7373042e24d05464d22094d88350dcc2b33b1a6ff2c"
   },
   "limitations": [
     "No Minecraft in-game import test",
@@ -54,9 +58,10 @@
     ]
   },
   "testSummary": {
-    "passed": 156,
+    "passed": 172,
     "failed": 0,
-    "skipped": 0
+    "skipped": 0,
+    "wasmSHA256": "53948b6680ec60d4d9dbeb1da803a35a299272d146301488d4cf063bb3cea281"
   },
   "staticIsolation": {
     "verifiedOn": "2026-10-25",
@@ -211,6 +216,103 @@
       },
       "cloudDeploymentVerified": false
     },
-    "limits": "Loopback timings are not public-network or mobile performance; gzip body bytes differ from network bytes when HTTP already decoded the response."
+    "limits": "Loopback timings are not public-network or mobile performance; gzip body bytes differ from network bytes when HTTP already decoded the response. Historical wasm32 measurements, not Memory64 performance evidence.",
+    "historical": true
+  },
+  "memory64": {
+    "verifiedOn": "2026-10-25",
+    "wasmSHA256": "53948b6680ec60d4d9dbeb1da803a35a299272d146301488d4cf063bb3cea281",
+    "wasmBytes": 1915266,
+    "gzipBytes": 644629,
+    "memory64": true,
+    "pointerBits": 64,
+    "minimumBudgetMiB": 128,
+    "defaultBudgetMiB": 1536,
+    "maximumBudgetMiB": 16384,
+    "browserHighAddress": {
+      "memory64": true,
+      "pointerBits": 64,
+      "memoryMaxMiB": 16384,
+      "memoryBudgetMiB": 8192,
+      "heapBytes": 4401332224,
+      "highPointer": "4300546872",
+      "previewPointer": "4300748816",
+      "previewBytes": 16384,
+      "workersProcessed": 4,
+      "workerItems": [
+        1088,
+        1056,
+        928,
+        1024,
+        0,
+        0,
+        0,
+        0
+      ],
+      "shared": true
+    },
+    "browserApplication": {
+      "surface": "Windows Chromium in-app browser",
+      "hosting": "Loopback static dist without server COOP/COEP; service-worker isolation",
+      "appliedBudgetMiB": 8192,
+      "checks": [
+        "RGB, RGB+ and Lab00 conversions retained together",
+        "Switching algorithms restores old result; history selector restores full saved settings",
+        "Independent side-by-side algorithm previews",
+        "Litematica download from selected cached native result",
+        "Clear-image history preserves source image",
+        "Engine restart clears history and preserves source image"
+      ],
+      "litematic": {
+        "valid": true,
+        "bytes": 74865,
+        "regions": [
+          {
+            "size": [
+              258,
+              134,
+              194
+            ],
+            "blockCount": 49517,
+            "blockHash": "4c11fee591a4fac92759e29c62200f04d1be13d754a41ecb660ce11b71191323"
+          }
+        ]
+      },
+      "consoleErrors": [],
+      "physicalMobileDeviceTested": false
+    },
+    "limitations": [
+      "16 GiB is the tested runtime declaration limit, not a full physical-memory workload test",
+      "Actual available memory depends on browser and device; task budget is an estimate",
+      "Historical wasm32 benchmark numbers do not establish Memory64 performance"
+    ]
+  },
+  "conversionHistory": {
+    "testsPassed": 13,
+    "maxEntries": 24,
+    "maxPreviewBytes": 268435456,
+    "nativeResidentBudgetFraction": 0.5,
+    "largeImageRegression": {
+      "width": 980,
+      "height": 858,
+      "algorithmDitherCombinations": 14,
+      "retained": 14,
+      "previewBytes": 47087040
+    },
+    "nativeSnapshotRestore": true,
+    "independentDatAndLitematicaValidation": true
+  },
+  "favicon": {
+    "svg": true,
+    "icoSizes": [
+      16,
+      32,
+      48,
+      64
+    ],
+    "appleTouchSize": [
+      180,
+      180
+    ]
   }
 }

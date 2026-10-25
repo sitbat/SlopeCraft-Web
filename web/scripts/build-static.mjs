@@ -35,11 +35,11 @@ async function walk(dir, base = dir, excluded = new Set()) {
   return files;
 }
 // Provide the exact modified project source beside the distributed executable.
-const sourceFiles = await collectSourceFiles(root,{buildDirectory:process.env.SC_BUILD_DIR || 'build/web'});
+const sourceFiles = await collectSourceFiles(root,{buildDirectory:process.env.SC_BUILD_DIR || 'build/web64'});
 await writeFile(path.join(dist,'SlopeCraft-Web-source.zip'),zip(sourceFiles));
 const files = (await walk(dist)).filter(file=>file.name!=='release-manifest.json');
 const manifest = {version:'5.4.1-web.1',upstream:'d4cda09853fe83141e155cb3a5280ce22ad9cd3a',
-  engine:'C++23 / WebAssembly SIMD / pthreads',files:files.map(({name,data})=>({path:name,bytes:data.length,sha256:createHash('sha256').update(data).digest('hex')}))};
+  engine:'C++23 / WebAssembly Memory64 / SIMD / pthreads',files:files.map(({name,data})=>({path:name,bytes:data.length,sha256:createHash('sha256').update(data).digest('hex')}))};
 await writeFile(path.join(dist,'release-manifest.json'),JSON.stringify(manifest,null,2));
 const artifact = path.join(root,'..','SlopeCraft-Web-static.zip');
 await writeFile(artifact,zip(await walk(dist)));

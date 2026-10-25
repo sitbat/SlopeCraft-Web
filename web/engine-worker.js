@@ -2,6 +2,7 @@
 import {RuntimeCache} from './runtime-cache.js';
 import {createStartupResources} from './startup-resources.js';
 import {loadWasmBinary, versionedWasmModuleURL} from './wasm-loader.js';
+import {invokeNativeJSON,copyNativePreview} from './native-bridge.js';
 let core;
 let catalog;
 let currentSequence;
@@ -19,23 +20,12 @@ globalThis.scProgress = progress => {
 };
 
 function nativeRequest(op, payload = {}, bytes, activeCore = core) {
-  let pointer = 0;
-  try {
-    const input = bytes ? new Uint8Array(bytes) : null;
-    if (input?.byteLength) {
-      pointer = activeCore._malloc(input.byteLength);
-      if (!pointer) throw new Error('浏览器内存不足，无法传入图片或方块库。');
-      activeCore.HEAPU8.set(input, pointer);
-    }
-    const text = activeCore.ccall('sc_request', 'string', ['string', 'number', 'number'],
-      [JSON.stringify({op, ...payload}), pointer, input?.byteLength || 0]);
-    const result = JSON.parse(text);
+    const result = invokeNativeJSON(activeCore,{op,...payload},bytes);
     if (!result.ok) throw new Error(result.error || 'SlopeCraft 核心返回错误');
     const data = result.data ?? {};
     if (data.preview?.pointer != null) {
-      const {pointer: start, length, width, height} = data.preview;
-      if (length !== width * height * 4 || start + length > activeCore.HEAPU8.length) throw new Error('核心返回了无效的预览图像。');
-      const rgba = activeCore.HEAPU8.slice(start, start + length).buffer;
+      const {width, height} = data.preview;
+      const rgba = copyNativePreview(activeCore,data.preview).buffer;
       data.preview = {width, height, rgba};
       data.width = width;
       data.height = height;
@@ -51,7 +41,6 @@ function nativeRequest(op, payload = {}, bytes, activeCore = core) {
       });
     }
     return data;
-  } finally { if (pointer) activeCore._free(pointer); }
 }
 
 async function fetchChecked(url, asJson = false) {

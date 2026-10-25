@@ -40,7 +40,7 @@ jobs:
       CMAKE_VERSION: '3.31.6'
       # Official emsdk revision; its release map includes Emscripten 4.0.23.
       EMSDK_REVISION: d7b4130688bfa348392b921ab04015aa15c4f154
-      SC_BUILD_DIR: build/web
+      SC_BUILD_DIR: build/web64
       SC_BUILD_JOBS: '2'
     defaults:
       run:
@@ -139,6 +139,7 @@ jobs:
             emscripten: process.env.EMSCRIPTEN_VERSION,
             cmake: process.env.CMAKE_VERSION,
             emsdkRevision: process.env.EMSDK_REVISION,
+            memory64: true, pointerBits: 64, maximumMemoryBytes: 17179869184,
             wasmBytes: wasm.length, wasmSha256: createHash('sha256').update(wasm).digest('hex'),
             testsPassed: true,
           };

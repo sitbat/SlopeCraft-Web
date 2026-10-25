@@ -4,7 +4,7 @@
 
 [Source repository](https://github.com/sitbat/SlopeCraft-Web)
 
-A static browser application for creating Minecraft map art. Based on [SlopeCraft](https://github.com/SlopeCraft/SlopeCraft) 5.4.1, it retains the original C++ conversion, structure-building and export algorithms, compiled to WebAssembly with SIMD and pthreads.
+A static browser application for creating Minecraft map art. Based on [SlopeCraft](https://github.com/SlopeCraft/SlopeCraft) 5.4.1, it retains the original C++ conversion, structure-building and export algorithms, compiled to WebAssembly with Memory64, SIMD and pthreads.
 
 Only static file hosting is needed in production. Images and computation stay in the browser; no computation backend, account or database server is required. This is an independent repository created from the initial Web source snapshot. Its Git history starts with that snapshot and does not inherit upstream commits. It contains the Web application and its required C++ components and resources. The original application was written by **TokiNoBug and the SlopeCraft contributors**; their copyright and GPL notices are preserved. Desktop documentation is kept in the [upstream archive](docs/upstream/README.en.md), and the source baseline is recorded in [UPSTREAM.md](UPSTREAM.md).
 
@@ -13,12 +13,14 @@ Only static file hosting is needed in production. Images and computation stay in
 ## Features
 
 - **Configuration:** slope, flat and map-file modes; Java 1.12–1.21, 26.1.2 and 26.2; original and additional block libraries, four upstream presets, per-base-color block choices, custom ZIP block packs, and preset import/export.
-- **Images and conversion:** batch import, drag and drop, paste, crop, resize and alpha handling; RGB, RGB+, HSV, XYZ, Lab94, Lab00, genetic conversion and dithering; original, converted and comparison previews.
+- **Images and conversion:** batch import, drag and drop, paste, crop, resize and alpha handling; RGB, RGB+, HSV, XYZ, Lab94, Lab00, genetic conversion and dithering; original, converted and comparison previews, saved algorithm variants, configuration restoration and side-by-side algorithm comparisons.
 - **Construction and materials:** lossless/lossy height compression, height limits, bridges, support blocks, fire/Enderman protection and mushroom connections; compressed-image previews and material lists with CSV export.
 - **Exports:** Litematica, vanilla structure NBT, WorldEdit schematics, flat construction diagrams, map data, give commands and assembled item-frame maps. Multiple exported files are bundled into ZIPs.
 - **Tools and caching:** actual current-palette PNG/CSV and blocklist test structures; IndexedDB computation snapshots, cache statistics/clearing, memory budgets and locally saved settings.
 
-Changing an image or relevant settings invalidates old results; export automatically recomputes them. Computation caching reduces memory use for the current image pool. **Reloading the page does not restore that pool.** Export what you need and keep the original images separately.
+The desktop application already cached results by image and algorithm. The Web interface adds result selection, independent side-by-side comparisons and export of the selected variant. Cache keys include image revision, all conversion options and block choices. Returning to the same configuration reuses its result; changing the source image, clearing the corresponding cache or reloading the engine requires computation again when needed.
+
+An LRU retains at most 24 variants, with a separate 256 MiB limit for RGBA previews. Successful IndexedDB snapshots release native computation memory. Results still resident in native memory have a separate estimated limit of half the applied calculation budget. Old entries are evicted when limits are exceeded; a single oversized result retains only the newest entry. **Reloading the page does not restore the image pool.** Export what you need and keep the original images separately.
 
 ## Run locally
 
@@ -35,7 +37,7 @@ Open the printed address, normally `http://127.0.0.1:4173`. This is a developmen
 
 Preview from the source checkout, or generate static files with the source-build steps below. Host **all of `web/dist/`** together as static files. The packaging script also creates `SlopeCraft-Web-static.zip` in the repository's parent directory. Root and subdirectory hosting are supported; runtime resources use relative URLs and do not depend on a CDN. Node, Python, Qt and Emscripten are not needed to run the deployed application.
 
-The browser must support WebAssembly SIMD, Web Workers and SharedArrayBuffer, with `crossOriginIsolated === true` before the engine starts. Production hosting requires an **HTTPS secure context**; localhost/loopback is suitable for local development.
+The browser must support WebAssembly Memory64, shared 64-bit linear memory, SIMD, Web Workers and SharedArrayBuffer, with `crossOriginIsolated === true` before the engine starts. Production hosting requires an **HTTPS secure context**; localhost/loopback is suitable for local development.
 
 Startup supports two isolation paths:
 
@@ -46,11 +48,11 @@ For the static Service Worker path, retain `coi-serviceworker.js`, `static-boots
 
 Server response headers remain an alternative: `Cross-Origin-Opener-Policy: same-origin` and `Cross-Origin-Embedder-Policy: require-corp`. On HTTPS browsers that support and permit the Service Worker path, the static bootstrap can supply these headers without changing the cloud server's isolation configuration. Production networking, certificates, access controls and server configuration remain the deployer's responsibility.
 
-**Only the multithreaded engine is provided; there is no single-thread fallback.** HTTPS alone does not prove isolation succeeded. If registration, control or isolation checks have not completed, the page reports the actual state instead of claiming the engine is ready.
+**Only the Memory64 multithreaded engine is provided; there is no wasm32 or single-thread fallback.** HTTPS alone does not prove isolation succeeded. If registration, control or isolation checks have not completed, the page reports the actual state instead of claiming the engine is ready.
 
 ## Compression and parallel startup
 
-The static package retains both the original pthread WASM and a pre-generated gzip file. The current original is **1,834,985 bytes**, versus **624,441 bytes** for gzip: a **66.0% reduction in file size**, not a measured browser-startup speedup.
+The static package retains both the original pthread WASM and a pre-generated gzip file. The current original is **1,915,266 bytes**, versus **644,629 bytes** for gzip: a **66.3% reduction in file size**, not a measured browser-startup speedup.
 
 The browser requests `wasm/slopecraft.wasm.gz` as an ordinary static file and decodes it with native `DecompressionStream`. If the host has already decoded the response through `Content-Encoding`, the loader recognizes the actual WASM bytes and avoids decoding twice. Decoded size and SHA-256 must match `wasm/wasm-integrity.js`. Missing decompression support or a gzip download, format or integrity failure falls back only to the original `slopecraft.wasm` for the same multithreaded engine, with the same integrity checks.
 
@@ -73,7 +75,7 @@ node web/scripts/check-static.mjs
 
 The Web build entry point is [`web/CMakeLists.txt`](web/CMakeLists.txt). Dependency versions and archive hashes are pinned in [`web/dependency-lock.json`](web/dependency-lock.json); downloads happen at build time. The Web build does not require Qt or native OpenMP.
 
-The default build directory is `build/web`. Set `SC_BUILD_DIR` to change it and `SC_BUILD_JOBS` to control parallel compilation. `package-dependencies.mjs` collects corresponding dependency sources and licenses from that same build directory before `npm run build` packages them. Generated dependency sources and `web/dist/` are excluded from Git.
+The default build directory is `build/web64`. Set `SC_BUILD_DIR` to change it and `SC_BUILD_JOBS` to control parallel compilation. `package-dependencies.mjs` collects corresponding dependency sources and licenses from that same build directory before `npm run build` packages them. Generated dependency sources and `web/dist/` are excluded from Git.
 
 The package includes the modified project source, corresponding dependency sources and licenses. See [`web/README.md`](web/README.md) for detailed usage/build notes and [`web/THIRD_PARTY_NOTICES.md`](web/THIRD_PARTY_NOTICES.md) for third-party components.
 
@@ -86,13 +88,13 @@ node web/scripts/check-static.mjs
 node web/tests/benchmark.mjs
 ```
 
-Build the static package before running its integrity check. Tests load the real pthread WASM; they do not substitute a JavaScript approximation. The saved verification records **156 passing tests**, covering algorithms, per-thread work counters, map splitting, structure semantics, transparency, block icons and native caches. See the [coverage checklist](web/tests/parity-checklist.md) and [verification record](web/test-results/verification.json).
+Build the static package before running its integrity check. Tests load the real pthread WASM; they do not substitute a JavaScript approximation. The current full suite passes **172 tests**, covering algorithms, per-thread work counters, map splitting, structure semantics, transparency, block icons, native snapshots, conversion history and Memory64 high-address access. See the [coverage checklist](web/tests/parity-checklist.md) and [verification record](web/test-results/verification.json).
 
-Browser checks on Windows Chromium cover import, conversion, construction, materials, downloads, caching and layouts at widths of 390, 633 and 1280 pixels. Responsive viewport checks are not physical-phone tests, and Node benchmarks are not browser performance measurements. Exports are independently parsed; each format has not yet been imported and verified inside Minecraft.
+Browser checks on Windows Chromium cover import, conversion, construction, materials, downloads, caching and layouts at widths of 390, 633 and 1280 pixels. Node and real-browser checks exercised actual addresses beyond 4 GiB, preview reads and four-worker computation. This is not a 16 GiB real-data or device-memory stress test, nor proof of support in all browsers. Responsive viewport checks are not physical-phone tests. The saved `benchmark-node.json` is a historical measurement of the older wasm32 build, not evidence of Memory64 or browser performance. Exports are independently parsed; each format has not yet been imported and verified inside Minecraft.
 
 - The port covers the **SlopeCraft main application**. VisualCraft, the separate MapViewer and the standalone imageCutter are not ported, and their desktop application sources are not included in this repository. The Web interface includes crop and resize tools.
 - Browser pickers, downloads and storage replace arbitrary local-path access. The interface currently uses Chinese. Desktop auto-updating and operating-system memory inspection are absent.
-- The original dense 3D representation is retained. The default calculation budget is 1536 MiB, adjustable from 128 to 3072 MiB. It is a preflight threshold, not a guarantee that the browser can allocate that memory. Resize or split oversized inputs.
+- The original dense 3D representation is retained. The current Memory64 build has a 16 GiB shared linear-memory maximum. The calculation budget defaults to 1536 MiB and accepts 128–16384 MiB; the UI obtains its range from engine metadata. This is an estimated per-task preflight threshold, not a total-heap hard limit or a promise of physical memory. JavaScript source-image and preview memory is additional. Oversized inputs may still need resizing or splitting.
 - “Stop subsequent tasks” stops the queue after the current C++ call finishes; it does not forcibly interrupt that calculation.
 - WorldEdit export does not support Java 1.12. Flat construction diagrams require flat map-art mode.
 

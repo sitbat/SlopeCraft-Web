@@ -5,7 +5,7 @@ import path from 'node:path';
 import {gunzipSync} from 'node:zlib';
 const root=fileURLToPath(new URL('../dist/',import.meta.url));
 const manifest=JSON.parse(await readFile(path.join(root,'release-manifest.json'),'utf8'));
-const required=['index.html','static-bootstrap.js','coi-serviceworker.js','browser-environment.js','wasm-loader.js','startup-resources.js','app.js','engine.js','engine-worker.js','runtime-cache.js','ui-archive.js','wasm/slopecraft.js','wasm/slopecraft.wasm','wasm/slopecraft.wasm.gz','wasm/wasm-integrity.js','assets/blocklists.json'];
+const required=['index.html','favicon.svg','favicon.ico','assets/branding/apple-touch-icon.png','static-bootstrap.js','coi-serviceworker.js','browser-environment.js','wasm-loader.js','startup-resources.js','native-bridge.js','conversion-history.js','app.js','engine.js','engine-worker.js','runtime-cache.js','ui-archive.js','wasm/slopecraft.js','wasm/slopecraft.wasm','wasm/slopecraft.wasm.gz','wasm/wasm-integrity.js','assets/blocklists.json'];
 const paths=new Set(manifest.files.map(file=>file.path));
 for(const file of required)if(!paths.has(file))throw new Error(`Required runtime file missing from package: ${file}`);
 if(!(await readFile(path.join(root,'index.html'),'utf8')).includes('src="./static-bootstrap.js"'))throw new Error('Static isolation bootstrap is not the page entry point');

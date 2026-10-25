@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+  <rect width="64" height="64" rx="12" fill="#f5f7ef"/>
+  <g transform="translate(10 8) rotate(-6 22 24)">
+    <path fill="#3d7451" d="M0 4h20v20H0z"/>
+    <path fill="#93ad6b" d="M24 0h20v20H24z"/>
+    <path fill="#b49c70" d="M0 28h20v20H0z"/>
+    <path fill="#6f9157" d="M24 24h20v20H24z"/>
+    <path fill="#000" opacity=".13" d="M17 4h3v20H0v-3h17zm24-4h3v20H24v-3h17zM17 28h3v20H0v-3h17zm24-4h3v20H24v-3h17z"/>
+  </g>
+</svg>

@@ -5,8 +5,9 @@ This checklist uses the original `SlopeCraft/SCWind.ui`, `SCWind.h`,
 `utilities/SC_GlobalEnums.h` and export implementations as its baseline.
 
 The Node engine suite loads the actual compiled pthread Wasm. It never replaces
-the engine with a JavaScript approximation. The small NBT/PNG fixture tests
-validate the independent inspection tools and are reported separately.
+the engine with a JavaScript approximation. The current complete suite passes
+172 tests. The small NBT/PNG fixture tests validate the independent inspection
+tools and are reported separately.
 
 ## Run
 
@@ -16,6 +17,9 @@ From `web/`, with Node available:
 node --test tests/assets.test.mjs tests/nbt.test.mjs tests/png.test.mjs
 node --test tests/engine.test.mjs
 node --test tests/static-bootstrap.test.mjs tests/static-worker.test.mjs
+node --test tests/conversion-history.test.mjs
+# Or run the complete suite:
+node --test tests/*.test.mjs
 ```
 
 Prepare the assets before the first command and build `web/wasm/slopecraft.js` before the second command.
@@ -26,7 +30,8 @@ artifact fails the engine suite explicitly; it is not counted as a pass or skip.
 
 | Original behavior | Check |
 | --- | --- |
-| C++ core in browser-compatible shared memory | Factory's heap must be a `SharedArrayBuffer`; metadata must advertise pthreads and four configured workers. |
+| C++ core in browser-compatible shared memory | Factory's heap must be a `SharedArrayBuffer`; metadata must advertise Memory64, 64-bit addresses, pthreads and four configured workers. |
+| Actual Memory64 addresses and preview reads | Grow shared memory beyond 4 GiB, allocate real native pointers above that boundary, access them from pthreads, and read an actual high-address preview. Check strict browser-style UTF-8 decoding and pointer bounds; compile flags and metadata alone are insufficient. The current build maximum is 16 GiB, with metadata-driven 128–16384 MiB budgets and a default of 1536 MiB. |
 | Actual multithread color matching | A 256 × 256 image must produce at least two nonzero per-thread completion counters, with at least 1000 work items completed. A pool's existence alone is insufficient. |
 | Original fixed/custom/Quark block libraries | Real ZIPs are parsed by the C++ blocklist reader; block IDs, versions and base colors are checked. Asset checks compare every original PNG, block list and optional `metainfo.json` byte-for-byte. |
 | Native block icons | Independently decode original RGBA glass and indexed+tRNS iron-trapdoor PNGs, and compare every RGBA byte with `blockIcon`; a second material must retain different pixels. |
@@ -53,6 +58,9 @@ artifact fails the engine suite explicitly; it is not counted as a pass or skip.
 | Assembled map wall/floor/ceiling | All twelve original facing/rotation combinations export two entities in both NBT and litematic; check facing, rotation, map IDs, glow, fixed and invisible flags. |
 | Give commands | Check pre-1.13, pre-1.20.5 and modern item-component command forms and map IDs. |
 | Native converted-image and 3D caches | Save real cache bytes, release the native image/structure, remove and rewrite MEMFS cache files, restore them, and compare dithered alpha previews, map pixels and all three terrain export formats. Also check releasing only the 3D structure retains map data. |
+| Conversion variants and cache identity | Include image revision, palette/version, selected block keys/groups and every conversion option. Different variants must retain independent native IDs; hits do not recompute. Forced replacement clears the previous structure, and failed conversion/builds cannot advertise invalid output. |
+| Variant export after native restore | Convert distinct RGB+/Lab00 variants, release/restore real native snapshots, switch back to a hit, and compare the selected DAT pixels and Litematica block semantics with that variant's original data. |
+| Dual cache quotas and invalidation | Check a 24-entry LRU, an independent 256 MiB RGBA preview quota, and unreleased-native estimates limited to half the applied budget. All 14 algorithm/dither variants of a 980 × 858 image stay cached with 47,087,040 preview bytes. Exercise cache failure/recovery, backend-cleared native IDs, source replacement and engine reset without removing source images. |
 | Recoverable errors | Unknown operations, unknown task IDs, bad RGBA lengths, malformed block ZIPs and empty palettes must report errors, followed by a successful conversion/export. |
 
 ## Browser checks required separately
@@ -67,8 +75,17 @@ These cannot be established by the direct C++/Wasm API suite:
 - PNG/JPEG image decoding and converted-image downloads from the browser canvas.
 - GA configuration dialog, background color/transparency controls, export options
   and version-dependent availability actually reach the engine.
-- Browser cache persistence/clearing, memory settings, project save/reload,
-  language choice and original help/about/license links.
+- Browser snapshot persistence/clearing, metadata-driven memory-budget settings,
+  settings import/export and help/about/license links. The source-image pool is
+  not restored on page reload, and the current UI language is Chinese.
+- Result-history selection restores the full conversion configuration; changing
+  algorithms can hit earlier results, selected-variant exports remain correct,
+  and side-by-side algorithm comparison uses two distinct entries. The upstream
+  desktop program already had per-image algorithm caching; explicit selection
+  and independent side-by-side comparison are Web additions.
+- Real browser Memory64 support and access above 4 GiB, including previews and
+  actual four-worker computation. Verify an 8192 MiB budget is accepted within
+  the metadata range; a large configured budget alone proves nothing.
 - Worker initialization and errors in the browser's actual isolation context;
   UI responsiveness while C++ pthreads calculate; download bytes round trip.
 - Already-isolated hosting starts the pthread engine directly without a needless
@@ -90,7 +107,12 @@ the direct Node engine suite does not establish it. Keep actual results separate
 from this checklist. No cloud deployment or physical-device result is implied.
 Production network/certificate/access-control configuration remains the deployer's
 responsibility. Server COOP/COEP headers remain an alternative to the static
-bootstrap. All runtime tests use the pthread build, with no single-thread fallback.
+bootstrap. All runtime tests use the Memory64 pthread build, with no wasm32 or
+single-thread fallback. Node and a real Windows Chromium browser have exercised
+actual addresses above 4 GiB, preview reads and four-worker computation. This is
+not a 16 GiB real-data or full device-memory pressure test, and does not establish
+support in every browser. A budget is a per-task estimate threshold, not an
+overall-heap hard cap; JavaScript images/previews consume additional memory.
 
 ## Limits of the evidence
 
@@ -111,7 +133,11 @@ node tests/benchmark.mjs --dither --threads=4 --runs=3
 ```
 
 The report is written to `web/test-results/benchmark-node.json` and records the
-exact compiled artifact hash. It measures 256, 512 and 1024 square conversions
+exact compiled artifact hash. The currently saved report belongs to the previous
+wasm32 build. It is historical evidence, not a Memory64 performance measurement;
+do not reuse its timing values as results for the new engine. Rerun the benchmark
+against the current artifact before making a new performance claim.
+The benchmark measures 256, 512 and 1024 square conversions
 with RGB+ and CIEDE2000, plus 512-square slope construction with lossless height
 compression/glass bridges and all three terrain formats plus map data export.
 The input uses a fixed xorshift32 seed and near-24-bit random opaque pixels;

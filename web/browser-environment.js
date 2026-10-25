@@ -1,4 +1,7 @@
 /** Browser requirements for SlopeCraft's pthread engine. GPL-3.0-or-later. */
+// Shared i64-index memory with a one-page minimum and a 16 GiB maximum.
+// Validation checks support without reserving or committing a large heap.
+const memory64Probe=Uint8Array.of(0,97,115,109,1,0,0,0,5,6,1,7,1,128,128,16);
 export function isolationEnvironment(scope = globalThis) {
   const problem = (code, message) => ({ready: false, code, message});
   if (scope.location?.protocol === 'file:') {
@@ -26,6 +29,13 @@ export function isolationEnvironment(scope = globalThis) {
   }
   if (typeof scope.SharedArrayBuffer !== 'function') {
     return problem('SHARED_MEMORY_UNAVAILABLE', '页面已隔离，但浏览器仍未提供 SharedArrayBuffer。请检查浏览器安全策略或使用支持共享内存的新版浏览器。');
+  }
+  try{
+    if(typeof scope.WebAssembly.validate!=='function'||!scope.WebAssembly.validate(memory64Probe)){
+      return problem('MEMORY64_UNAVAILABLE','此浏览器不支持 Memory64 多线程引擎，请使用支持 Memory64 的新版 64 位浏览器。');
+    }
+  }catch{
+    return problem('MEMORY64_UNAVAILABLE','浏览器未启用 Memory64 多线程支持，无法加载此引擎。');
   }
   return {ready: true, code: 'READY', message: '跨源隔离和共享内存已就绪。'};
 }

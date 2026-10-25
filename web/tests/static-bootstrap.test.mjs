@@ -60,6 +60,16 @@ test('server-isolated pages start the app without registering a worker or reload
   assert.equal(f.classes.has('error'), false);
 });
 
+test('a browser without shared Memory64 support gets a diagnostic before loading the engine',async()=>{
+  const f=fixture({isolated:true});
+  f.scope.WebAssembly={compile:async()=>{},validate:()=>false};
+  const status=await bootstrap(f.options);
+  assert.equal(status.code,'MEMORY64_UNAVAILABLE');
+  assert.equal(f.counts.loadApp,0);
+  assert.equal(f.counts.register.length,0);
+  assert.equal(f.counts.reload,0);
+});
+
 test('first headerless visit registers only its directory and reloads before importing the app', async () => {
   const f = fixture();
   const first = await bootstrap({...f.options, moduleURL: entryURL + '?private=value#secret'});

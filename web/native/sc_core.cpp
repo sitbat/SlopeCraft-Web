@@ -10,6 +10,7 @@
 #include <stdexcept>
 #include <unordered_map>
 #include <vector>
+#include <cstdlib>
 #include "SlopeCraftL.h"
 #include "converted_image.h"
 #include "color_table.h"
@@ -19,8 +20,11 @@
 using json = nlohmann::json;
 using namespace SlopeCraft;
 EM_JS(void, sc_emit_progress, (const char* stage, double current, double total), {
-  if (globalThis.scProgress) globalThis.scProgress({stage: UTF8ToString(stage), current, total});
+  const address=Number(stage);
+  if (!Number.isSafeInteger(address) || address<0) throw new Error('Invalid Memory64 progress string pointer');
+  if (globalThis.scProgress) globalThis.scProgress({stage: UTF8ToString(address), current, total});
 });
+static_assert(sizeof(void*)==8 && sizeof(size_t)==8,"SlopeCraft Web must be built with true Memory64");
 
 namespace {
 template<class T> using owned = std::unique_ptr<T, SlopeCraft::deleter>;
@@ -135,6 +139,7 @@ json catalog() {
   return result;
 }
 json metadata() {
+  const uint64_t heap_maximum=emscripten_get_heap_max();
   std::array<uint32_t,64> rgb;
   SCL_get_base_color_ARGB32(rgb.data());
   json colors = json::array();
@@ -144,6 +149,10 @@ json metadata() {
     {"lastWorkers",sc_web::last_workers.load()},{"pthread",true},{"simd",true},
     {"workersProcessed",sc_web::last_working_workers.load()},{"workerItems",sc_web::last_worker_items},
     {"memoryBudgetMB",sc_web::memory_budget_bytes/(1024*1024)},
+    {"memory64",true},{"pointerBits",sizeof(void*)*8},{"addressBits",sizeof(void*)*8},
+    {"memoryMaxBytes",heap_maximum},
+    {"memoryMaxMiB",heap_maximum/(1024*1024)},
+    {"memoryMinMiB",128},{"heapBytes",emscripten_get_heap_size()},
     {"baseColors",colors},{"mapColors",map_colors},{"versions",{12,13,14,15,16,17,18,19,20,21,4790,4903}},
     {"algorithms",{"r","R","H","X","l","L","A"}},
     {"formats",{"dat","litematic","nbt","schem","png","command","assembled-litematic","assembled-nbt"}},
@@ -161,7 +170,7 @@ json preview_of(task& t, bool compressed) {
     preview[i*4+2] = argb[i];
     preview[i*4+3] = argb[i] >> 24;
   }
-  return {{"pointer",reinterpret_cast<uintptr_t>(preview.data())},{"length",preview.size()},
+  return {{"pointer",std::to_string(reinterpret_cast<uintptr_t>(preview.data()))},{"length",preview.size()},
           {"width",t.image->cols()},{"height",t.image->rows()}};
 }
 json load_blocklist(const json& request, const uint8_t* bytes, size_t length) {
@@ -253,7 +262,7 @@ json block_icon(const json& request) {
     preview[i*4]=pixels[i]>>16;preview[i*4+1]=pixels[i]>>8;
     preview[i*4+2]=pixels[i];preview[i*4+3]=pixels[i]>>24;
   }
-  return {{"key",key},{"preview",{{"pointer",reinterpret_cast<uintptr_t>(preview.data())},
+  return {{"key",key},{"preview",{{"pointer",std::to_string(reinterpret_cast<uintptr_t>(preview.data()))},
     {"length",preview.size()},{"width",16},{"height",16}}}};
 }
 json test_blocklist(const json& request) {
@@ -487,7 +496,8 @@ extern "C" EMSCRIPTEN_KEEPALIVE const char* sc_request(const char* request_json,
     json result;
     if(op=="init") {
       sc_web::worker_count=std::clamp(integer(request,"threads",4),2,8);
-      const int budget=std::clamp(integer(request,"memoryBudgetMB",1536),128,3072);
+      const int max_budget_mib=static_cast<int>(emscripten_get_heap_max()/(1024*1024));
+      const int budget=std::clamp(integer(request,"memoryBudgetMB",1536),128,max_budget_mib);
       sc_web::memory_budget_bytes=uint64_t(budget)*1024*1024;
       result=metadata();
     } else if(op=="metadata") result=metadata();
@@ -519,3 +529,9 @@ extern "C" EMSCRIPTEN_KEEPALIVE const char* sc_request(const char* request_json,
   }
   return response.c_str();
 }
+
+// These wrappers deliberately retain native i64 signatures. Emscripten wraps
+// standard malloc/free into Number-based compatibility helpers; the bridge uses
+// these exports to keep pointers and size_t as BigInt across the actual ABI.
+extern "C" EMSCRIPTEN_KEEPALIVE void* sc_allocate(size_t bytes) { return std::malloc(bytes); }
+extern "C" EMSCRIPTEN_KEEPALIVE void sc_deallocate(void* pointer) { std::free(pointer); }

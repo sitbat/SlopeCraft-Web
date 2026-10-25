@@ -34,6 +34,21 @@ use the public issue tracker.
   access outside the intended browser/file boundaries.
 - Conversion and export run locally in a browser Worker and WebAssembly module.
   No image-upload or remote computation backend is part of the Web application.
+- The build requires actual WebAssembly Memory64, shared 64-bit linear memory,
+  SIMD and pthread support; no wasm32 or single-thread fallback is shipped.
+  Its current shared linear-memory maximum is 16 GiB. The metadata-provided
+  128–16384 MiB calculation budget (1536 MiB by default) is an estimated per-task
+  preflight check, not a total-memory hard limit or proof of available RAM.
+  Source images, previews and downloaded files also consume JavaScript memory.
+  Large or malicious inputs can still exhaust browser/device resources.
+- Native pointers cross the JavaScript boundary as BigInt values. Preserve
+  checked pointer/length conversions, bounds checks and bounded UTF-8 decoding;
+  truncating an address to 32 bits can corrupt access above 4 GiB.
+- Browser snapshots and conversion history do not constitute a saved project.
+  Reloading the engine or clearing the corresponding cache invalidates native
+  variants; page reload does not restore source images. Preview storage is
+  separately limited to 256 MiB and 24 LRU entries, while resident native
+  estimates are limited to half the applied calculation budget.
 - The pthread build requires a secure context and confirmed cross-origin
   isolation. Existing server COOP/COEP headers can provide it directly. On an
   HTTPS static site, a same-directory Service Worker may add those headers to

@@ -9,7 +9,7 @@ extern "C" {
 // and valid until the next request. Always copy preview heap ranges immediately.
 // No single-thread variant exists: the module is built with pthread + SIMD.
 //
-// {op:"init",threads:2..8,memoryBudgetMB:128..3072}
+// {op:"init",threads:2..8,memoryBudgetMB:128..metadata.memoryMaxMiB}
 // {op:"metadata"}
 // {op:"loadBlocklist",name:string} + ZIP bytes
 // {op:"blockIcon",key} -> 16x16 preview RGBA
@@ -31,9 +31,14 @@ extern "C" {
 // {op:"releaseStructure",id} -> keep converted image, release dense tensor
 //
 // Result is {ok:true,data:{...}} or {ok:false,error:string}.
+// Pointers/size_t in the direct JS ABI are BigInt; preview.pointer is a decimal
+// string. Convert it to a Number only after checking the safe-integer range.
+// metadata exposes memory64, pointerBits, memoryMaxBytes/MiB and heapBytes.
 // preview={pointer,length,width,height} points to row-major RGBA bytes.
 // exports={files:[{name,path,mime}]} are MEMFS files; caller reads and unlinks.
 const char* sc_request(const char* json, const uint8_t* bytes, size_t length);
+void* sc_allocate(size_t bytes);
+void sc_deallocate(void* pointer);
 #ifdef __cplusplus
 }
 #endif

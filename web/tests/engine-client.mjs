@@ -2,6 +2,7 @@ import { readFile, access } from 'node:fs/promises';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { resolve, dirname } from 'node:path';
 import assert from 'node:assert/strict';
+import {invokeNativeJSON,copyNativePreview} from '../native-bridge.js';
 
 const webRoot = fileURLToPath(new URL('../', import.meta.url));
 
@@ -19,34 +20,12 @@ export async function loadEngine() {
     print: () => {},
     printErr: line => errors.push(line),
   });
-  const decoder = new TextDecoder();
-  const encoder = new TextEncoder();
   function raw(payload, input = new Uint8Array()) {
-    const json = encoder.encode(JSON.stringify(payload));
-    const requestPointer = engine._malloc(json.length + 1);
-    const inputPointer = input.byteLength ? engine._malloc(input.byteLength) : 0;
-    try {
-      assert.ok(requestPointer > 0, 'request allocation failed');
-      engine.HEAPU8.set(json, requestPointer);
-      engine.HEAPU8[requestPointer + json.length] = 0;
-      if (input.byteLength) {
-        assert.ok(inputPointer > 0, 'image allocation failed');
-        engine.HEAPU8.set(input, inputPointer);
-      }
-      const pointer = engine._sc_request(requestPointer, inputPointer, input.byteLength);
-      assert.ok(pointer > 0, 'core returned a null response');
-      const end = engine.HEAPU8.indexOf(0, pointer);
-      assert.ok(end >= pointer, 'core response is not NUL terminated');
-      const result = JSON.parse(decoder.decode(engine.HEAPU8.subarray(pointer, end)));
+      const result = invokeNativeJSON(engine,payload,input);
       if (result.ok && result.data?.preview) {
-        const { pointer, length } = result.data.preview;
-        result.data.previewBytes = new Uint8Array(engine.HEAPU8.slice(pointer, pointer + length));
+        result.data.previewBytes = copyNativePreview(engine,result.data.preview);
       }
       return result;
-    } finally {
-      if (inputPointer) engine._free(inputPointer);
-      if (requestPointer) engine._free(requestPointer);
-    }
   }
   function request(op, payload = {}, input) {
     const result = raw({ op, ...payload }, input);

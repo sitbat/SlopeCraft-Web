@@ -1,7 +1,17 @@
 cmake_minimum_required(VERSION 3.29)
+# The toolchain determines pointer/size_t widths during project(), so Memory64
+# must already be present in both language flags at that point.
+foreach(language C CXX)
+  if(NOT CMAKE_${language}_FLAGS MATCHES "MEMORY64")
+    set(CMAKE_${language}_FLAGS "${CMAKE_${language}_FLAGS} -sMEMORY64=1" CACHE STRING "Memory64 compiler flags" FORCE)
+  endif()
+endforeach()
 project(SlopeCraftWeb VERSION 5.4.1 LANGUAGES C CXX)
 if(NOT EMSCRIPTEN)
   message(FATAL_ERROR "Configure with the Emscripten toolchain: emcmake cmake -S web -B work/build-web")
+endif()
+if(NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
+  message(FATAL_ERROR "SlopeCraft Web requires true Memory64 (8-byte pointers). Use a fresh build directory.")
 endif()
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -11,6 +21,10 @@ set(CMAKE_BUILD_TYPE Release CACHE STRING "")
 set(SC_ROOT "${CMAKE_CURRENT_LIST_DIR}/..")
 set(SC_WASM_OUTPUT "${CMAKE_CURRENT_LIST_DIR}/wasm" CACHE PATH "Static website engine output")
 set(SC_PTHREAD_POOL_SIZE 8 CACHE STRING "Number of prewarmed browser pthread workers")
+set(SC_MAXIMUM_MEMORY_BYTES 17179869184 CACHE STRING "Memory64 shared linear-memory maximum, bytes")
+if(SC_MAXIMUM_MEMORY_BYTES GREATER 17179869184 OR SC_MAXIMUM_MEMORY_BYTES LESS 134217728)
+  message(FATAL_ERROR "The verified Memory64 runtime maximum is 16 GiB; initial memory is 128 MiB.")
+endif()
 add_compile_options(-pthread -msimd128 -fexceptions)
 add_link_options(-pthread -msimd128 -fexceptions)
 include(FetchContent)
@@ -135,17 +149,18 @@ target_include_directories(slopecraft PRIVATE
   "${cereal_SOURCE_DIR}/include" "${json_SOURCE_DIR}/single_include/nlohmann"
   "${magic_enum_SOURCE_DIR}/include" "${boost_SOURCE_DIR}" "${nbt_SOURCE_DIR}/include"
 )
-target_compile_definitions(slopecraft PRIVATE SLOPECRAFT_WEB SLOPECRAFTL_NOT_INSTALLED SCL_FIND_GlobalEnums_BY_PATH _USE_MATH_DEFINES BOOST_IOSTREAMS_NO_LIB BOOST_IOSTREAMS_STATIC_LINK EIGEN_DEFAULT_DENSE_INDEX_TYPE=int64_t)
+target_compile_definitions(slopecraft PRIVATE SLOPECRAFT_WEB SLOPECRAFTL_NOT_INSTALLED SCL_FIND_GlobalEnums_BY_PATH _USE_MATH_DEFINES BOOST_IOSTREAMS_NO_LIB BOOST_IOSTREAMS_STATIC_LINK EIGEN_DEFAULT_DENSE_INDEX_TYPE=int64_t SC_WASM_MAXIMUM_MEMORY_BYTES=${SC_MAXIMUM_MEMORY_BYTES}ULL)
 target_link_libraries(slopecraft PRIVATE sc_png sc_zlib sc_zstd zip nbt++)
 target_compile_options(slopecraft PRIVATE -O3)
 target_link_options(slopecraft PRIVATE -O3 --no-entry
+  "-sMEMORY64=1"
   "-sMODULARIZE=1" "-sEXPORT_ES6=1" "-sEXPORT_NAME=createSlopeCraft"
   "-sENVIRONMENT=web,worker,node" "-sPTHREAD_POOL_SIZE=${SC_PTHREAD_POOL_SIZE}"
   "-sPTHREAD_POOL_SIZE_STRICT=2" "-sALLOW_MEMORY_GROWTH=1"
-  "-sINITIAL_MEMORY=134217728" "-sMAXIMUM_MEMORY=4294967296"
+  "-sINITIAL_MEMORY=134217728" "-sMAXIMUM_MEMORY=${SC_MAXIMUM_MEMORY_BYTES}"
   "-sSTACK_SIZE=4194304" "-sDEFAULT_PTHREAD_STACK_SIZE=2097152"
   "-sFORCE_FILESYSTEM=1" "-sFILESYSTEM=1"
-  "-sEXPORTED_FUNCTIONS=['_sc_request','_malloc','_free']"
-  "-sEXPORTED_RUNTIME_METHODS=['FS','ccall','cwrap','UTF8ToString','stringToUTF8','lengthBytesUTF8','HEAPU8','PThread']"
+  "-sEXPORTED_FUNCTIONS=['_sc_request','_sc_allocate','_sc_deallocate','_malloc','_free']"
+  "-sEXPORTED_RUNTIME_METHODS=['FS','ccall','cwrap','UTF8ToString','stringToUTF8','lengthBytesUTF8','HEAPU8','wasmMemory','PThread']"
 )
 set_target_properties(slopecraft PROPERTIES SUFFIX ".js" RUNTIME_OUTPUT_DIRECTORY "${SC_WASM_OUTPUT}")

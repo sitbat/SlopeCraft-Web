@@ -1,5 +1,6 @@
 import {EngineClient} from './engine.js';
 import {zipStore} from './ui-archive.js';
+import {ConversionHistory, conversionKey, stableKey, memoryBudgetRange} from './conversion-history.js';
 
 const $ = id => document.getElementById(id);
 const $$ = selector => [...document.querySelectorAll(selector)];
@@ -24,7 +25,16 @@ const state = {
   operationIndex: 0, operationTotal: 1, pendingSaved: null,
   commandPreviewTimer: null, commandPreviewSequence: 0,
   palette: null,
+  paletteRevision: 0,
+  appliedCacheEnabled:true,nativeCacheAvailable:true,
 };
+const conversionHistory = new ConversionHistory({onRemove(entry, reason) {
+  if (!['engine-reset','backend-clear'].includes(reason)) releaseNative(entry.nativeId);
+  for (const task of state.tasks) {
+    if (task.conversionEntry?.nativeId !== entry.nativeId) continue;
+    task.conversionEntry=null;task.converted=null;task.built=null;task.buildStale=true;task.stale=true;task.commandPreview=null;
+  }
+}});
 const baseColorNames = ['透明 / 辅助','草绿','沙色','羊毛白','火红','冰蓝','金属灰','植物绿','雪白','黏土','泥土','石灰','水蓝','木色','石英白','橙色','品红','淡蓝','黄色','黄绿','粉红','灰色','淡灰','青色','紫色','蓝色','棕色','绿色','红色','黑色','金色','钻石','青金石','绿宝石','灰化土','地狱岩','白色陶瓦','橙色陶瓦','品红陶瓦','淡蓝陶瓦','黄色陶瓦','黄绿陶瓦','粉红陶瓦','灰色陶瓦','淡灰陶瓦','青色陶瓦','紫色陶瓦','蓝色陶瓦','棕色陶瓦','绿色陶瓦','红色陶瓦','黑色陶瓦','绯红菌岩','绯红菌柄','绯红菌核','诡异菌岩','诡异菌柄','诡异菌核','诡异疣块','深板岩','粗铁','发光地衣'];
 const groupNames = {FixedBlocks: '原版方块', CustomBlocks: '更多原版方块', QuarkModBlocks: 'Quark Mod 方块'};
 const presetNames = {vanilla: '原版', cheap: '廉价', elegant: '优雅', shiny: '发光', custom: '自定义'};
@@ -69,6 +79,11 @@ function updateButtons() {
   $('apply-settings').disabled = busy;
   $('refresh-cache').disabled = busy || !state.ready;
   $('clear-cache').disabled = busy || !state.ready;
+  $('clear-conversion-history').disabled = busy || !task || !conversionHistory.forTask(task.id).length;
+  $('clear-history-cache').disabled = busy || !conversionHistory.stats().entries;
+  $('reconvert-current').disabled = busy || !state.ready || !task;
+  $('conversion-result').disabled = busy || !task || !conversionHistory.forTask(task.id).length;
+  $('comparison-result').disabled = busy || !task || !conversionHistory.forTask(task.id).some(entry=>entry!==task.conversionEntry);
   const glowingAvailable = version() >= 17;
   if (!glowingAvailable) $('glowing-frames').checked = false;
   $('glowing-frames').disabled = busy || !glowingAvailable;
@@ -232,22 +247,84 @@ function renderBlocklistChoices() {
   }
 }
 
+function conversionDescriptor(task) {
+  return {taskId:task.id,imageRevision:task.imageRevision,width:task.width,height:task.height,
+    paletteRevision:state.paletteRevision,options:convertOptions(),blocks:selectionPayload(),enabledGroups:[...state.enabledGroups]};
+}
+function adoptConversion(task,entry) {
+  if(task.conversionEntry!==entry){task.commandPreview=null;task.conversionSerial=(task.conversionSerial||0)+1;}
+  task.conversionEntry=entry;task.converted=entry.result;task.stale=false;
+  task.built=entry.built;
+  try{task.buildStale=!entry.built||entry.buildKey!==stableKey(buildOptions());}catch{task.buildStale=true;}
+}
+function syncConversion(task) {
+  let entry;
+  try{entry=conversionHistory.peek(conversionKey(conversionDescriptor(task)));}catch{/* Pending invalid form fields cannot match a result. */}
+  if(entry)adoptConversion(task,entry);
+  else{task.stale=Boolean(task.converted||conversionHistory.forTask(task.id).length);task.conversionEntry=null;task.converted=null;task.built=null;task.buildStale=true;task.commandPreview=null;}
+}
+function nativeResultResident() {return !state.appliedCacheEnabled||!state.nativeCacheAvailable;}
+async function requestVariant(entry,type,payload) {
+  return conversionHistory.use(entry,async id=>{
+    try{return await state.client.request(type,{...payload,id});}
+    finally{conversionHistory.setResident(entry,nativeResultResident());}
+  });
+}
+function entryLabel(entry) {
+  const options=entry.descriptor.options, names={RGB:'RGB',RGB_Better:'RGB+',Lab94:'Lab94',Lab00:'Lab00',XYZ:'XYZ',HSV:'HSV',AI:'遗传算法'};
+  const mapNames={slope:'立体',flat:'平面',file:'纯文件'};
+  return `#${entry.ordinal} ${names[options.algorithm]||options.algorithm}${options.dither?' · 抖动':''} · ${mapNames[options.mapType]||options.mapType} · ${options.version>=1000?`版本 ${options.version}`:`1.${options.version}`}`;
+}
+function sizeLabel(bytes) {return bytes>=1048576?`${(bytes/1048576).toFixed(1)} MiB`:bytes>=1024?`${(bytes/1024).toFixed(1)} KiB`:`${formatNumber(bytes)} B`;}
+function renderConversionHistory(task=activeTask()) {
+  const entries=task?conversionHistory.forTask(task.id,task.imageRevision).reverse():[], selector=$('conversion-result'),comparison=$('comparison-result');
+  selector.replaceChildren();comparison.replaceChildren();
+  const missing=text('option',task?'当前配置尚未转化':'请选择图像');missing.value='';missing.disabled=true;selector.append(missing);
+  const candidates=entries.filter(entry=>entry!==task?.conversionEntry);
+  for(const entry of entries){
+    for(const select of [selector,...(candidates.includes(entry)?[comparison]:[])]){const option=text('option',entryLabel(entry));option.value=entry.nativeId;option.title=`${entryLabel(entry)} · ${entry.descriptor.width} × ${entry.descriptor.height}`;select.append(option);}
+  }
+  selector.value=task?.conversionEntry?.nativeId||'';
+  if(task){
+    if(!candidates.some(entry=>entry.nativeId===task.compareNativeId))task.compareNativeId=candidates[0]?.nativeId||'';
+    comparison.value=task.compareNativeId;
+  }
+  $('comparison-controls').hidden=state.preview!=='algorithms';
+  const stats=conversionHistory.stats();
+  $('conversion-history-stats').textContent=`此图 ${entries.length} 个结果`;
+  $('history-cache-stats').textContent=`${stats.entries} 个结果 · 预览 ${sizeLabel(stats.previewBytes)} · 原生驻留估算 ${sizeLabel(stats.nativeResidentBytes)}`;
+  $('history-cache-stats').dataset.entries=stats.entries;
+  $('history-cache-stats').dataset.previewBytes=stats.previewBytes;
+}
+function chooseConversion(nativeId) {
+  const task=activeTask(),entry=task&&conversionHistory.forTask(task.id,task.imageRevision).find(entry=>entry.nativeId===nativeId);
+  if(!entry||state.busy)return;
+  const {options,blocks,enabledGroups}=entry.descriptor;
+  const values={'game-version':options.version,'pure-transparent':options.pureTransparent,'half-transparent':options.halfTransparent,'background-color':options.backgroundColor,
+    'ga-population':options.ga.popSize,'ga-generations':options.ga.maxGeneration,'ga-failures':options.ga.maxFailTimes,'ga-crossover':options.ga.crossoverProb,'ga-mutation':options.ga.mutationProb};
+  for(const [id,val]of Object.entries(values))$(id).value=val;
+  for(const [name,val]of [['algorithm',options.algorithm],['map-type',options.mapType]]){const control=$$(`input[name="${name}"]`).find(input=>input.value===val);if(control)control.checked=true;}
+  $('dither').checked=options.dither;state.enabledGroups=new Set(enabledGroups);
+  state.selections=new Map(blocks.map(block=>[block.baseColor,{id:block.id,enabled:block.enabled}]));
+  conversionHistory.get(entry.key);state.preset='custom';renderBlocks();renderBlocklistChoices();syncMapType();invalidateConversion();renderMapRanges();
+}
+function clearConversionHistory(taskId=null) {
+  if(state.busy)return;
+  if(taskId===null)conversionHistory.clear();else conversionHistory.removeTask(taskId,'cleared');
+  renderQueue();renderPreview();renderBuild();renderMapRanges();updateButtons();
+  notify(taskId===null?'已清空对比结果，原图项目保留。':'已清除此图的对比结果，原图保留。');
+}
 function invalidateConversion() {
-  for(const task of state.tasks){if(task.converted)task.stale=true;task.buildStale=true;}
-  renderQueue();renderPreview();renderBuild();updateButtons();persist();
+  for(const task of state.tasks)syncConversion(task);
+  renderQueue();renderPreview();renderBuild();renderMapRanges();updateButtons();persist();
 }
 function invalidateBuild() {
-  for(const task of state.tasks)task.buildStale=true;
+  for(const task of state.tasks){try{task.buildStale=!task.conversionEntry?.built||task.conversionEntry.buildKey!==stableKey(buildOptions());}catch{task.buildStale=true;}}
   renderBuild();updateButtons();persist();
 }
 function invalidateNativeResults(ids = null) {
-  const affected = ids === null ? null : new Set(ids.map(String));
-  for (const task of state.tasks) {
-    if (affected && !affected.has(String(task.id))) continue;
-    task.stale = Boolean(task.converted || task.built);
-    task.buildStale = true;
-    task.commandPreview = null;
-  }
+  if(ids===null)conversionHistory.clear('engine-reset');
+  else conversionHistory.removeNativeIds(ids);
   clearTimeout(state.commandPreviewTimer);
   state.commandPreviewSequence++;
   renderQueue(); renderPreview(); renderBuild(); renderMapRanges(); updateButtons();
@@ -256,6 +333,7 @@ function chooseTask(id,event={}) {
   if(event.ctrlKey||event.metaKey){state.selected.has(id)?state.selected.delete(id):state.selected.add(id);if(state.selected.has(id))state.active=id;else if(state.active===id)state.active=[...state.selected].at(-1)||null;}
   else if(event.shiftKey&&state.active){const a=state.tasks.findIndex(t=>t.id===state.active),b=state.tasks.findIndex(t=>t.id===id);for(const task of state.tasks.slice(Math.min(a,b),Math.max(a,b)+1))state.selected.add(task.id);state.active=id;}
   else {state.selected=new Set([id]);state.active=id;}
+  const task=activeTask();if(task)syncConversion(task);
   renderQueue();renderPreview();renderBuild();renderMapRanges();updateButtons();
 }
 function renderQueue() {
@@ -297,8 +375,8 @@ async function addFiles(files,replace=false) {
       status(`正在读取 ${file.name}…`);const image=await decodeFile(file);
       const ids=replace?[...state.selected]:[crypto.randomUUID()];
       for(const id of ids){
-        const task={id,name:file.name||`图像-${state.tasks.length+1}.png`,...image,rgba:new Uint8ClampedArray(image.rgba),imported:{...image,rgba:new Uint8ClampedArray(image.rgba)},converted:null,built:null,stale:false,buildStale:true};
-        const index=state.tasks.findIndex(t=>t.id===id);if(index<0)state.tasks.push(task);else{state.tasks[index]=task;releaseNative(id);}
+        const task={id,imageRevision:crypto.randomUUID(),name:file.name||`图像-${state.tasks.length+1}.png`,...image,rgba:new Uint8ClampedArray(image.rgba),imported:{...image,rgba:new Uint8ClampedArray(image.rgba)},converted:null,built:null,stale:false,buildStale:true};
+        const index=state.tasks.findIndex(t=>t.id===id);if(index<0)state.tasks.push(task);else{conversionHistory.removeTask(id);state.tasks[index]=task;}
         state.selected=new Set([id]);state.active=id;successes++;
       }
       if(replace)break;
@@ -306,7 +384,7 @@ async function addFiles(files,replace=false) {
   }
   renderQueue();renderPreview();renderBuild();renderMapRanges();updateButtons();if(successes){setTab('convert');status(`已${replace?'替换':'添加'} ${successes} 张图像`);}
 }
-function releaseNative(id) {if(state.ready&&!state.busy)state.client.request('dispose',{id}).catch(error=>console.warn(error));}
+function releaseNative(id) {if(state.ready)state.client.request('dispose',{id}).catch(error=>console.warn(error));}
 function drawRgba(canvas,rgba,width,height) {
   canvas.width=width;canvas.height=height;
   const pixels=rgba instanceof Uint8ClampedArray?rgba:new Uint8ClampedArray(rgba.buffer||rgba,rgba.byteOffset||0,width*height*4);
@@ -314,13 +392,20 @@ function drawRgba(canvas,rgba,width,height) {
 }
 function renderPreview() {
   const task=activeTask();$('preview-empty').hidden=Boolean(task);$('canvas-pair').hidden=!task;
+  renderConversionHistory(task);
   $('preview-area').dataset.mode=state.preview;
   for(const button of $$('[data-preview]'))button.classList.toggle('active',button.dataset.preview===state.preview);
   if(!task){$('image-dimensions').textContent='尚未选择图像';updateButtons();return;}
   $('image-dimensions').textContent=`${task.width} × ${task.height} 像素 · ${Math.ceil(task.width/128)} × ${Math.ceil(task.height/128)} 张地图`;
-  drawRgba($('original-canvas'),task.rgba,task.width,task.height);
-  $('converted-empty').hidden=Boolean(task.converted);
-  if(task.converted){drawRgba($('converted-canvas'),task.converted.rgba,task.converted.width||task.width,task.converted.height||task.height);$('converted-canvas').style.opacity=task.stale?'.55':'1';}
+  const algorithms=state.preview==='algorithms',other=algorithms?conversionHistory.forTask(task.id,task.imageRevision).find(entry=>entry.nativeId===task.compareNativeId):null;
+  const left=algorithms&&task.converted?task.converted:{rgba:task.rgba,width:task.width,height:task.height};
+  const right=algorithms?other?.result:task.converted;
+  $('original-label').textContent=algorithms&&task.conversionEntry?entryLabel(task.conversionEntry):'原图';
+  $('converted-label').textContent=algorithms&&other?entryLabel(other):'转化后';
+  drawRgba($('original-canvas'),left.rgba,left.width||task.width,left.height||task.height);
+  $('converted-empty').textContent=algorithms?'使用另一种算法转化后，在这里选择对比结果':'点击“转化当前图像”生成预览';
+  $('converted-empty').hidden=Boolean(right);
+  if(right){drawRgba($('converted-canvas'),right.rgba,right.width||task.width,right.height||task.height);$('converted-canvas').style.opacity=algorithms?'1':task.stale?'.55':'1';}
   else{$('converted-canvas').width=task.width;$('converted-canvas').height=task.height;$('converted-canvas').getContext('2d').clearRect(0,0,task.width,task.height);}
   applyZoom();updateButtons();
 }
@@ -339,14 +424,17 @@ function convertOptions() {
 function buildOptions() {
   return {maxHeight:Math.trunc(number('max-height',14,4096)),compression:(checked('compress-lossless')?1:0)|(checked('compress-lossy')?2:0),glassBridge:checked('glass-bridge'),bridgeInterval:Math.trunc(number('bridge-interval',0,4096)),fireproof:checked('fireproof'),enderproof:checked('enderproof'),connectMushroom:checked('connect-mushroom'),supportBlock:value('support-block')};
 }
-async function ensureConverted(task) {
-  if(task.converted&&!task.stale)return task.converted;
+async function ensureConverted(task,{force=false}={}) {
+  const descriptor=conversionDescriptor(task);
   task.processing=true;task.error=null;renderQueue();status(`转化 ${task.name}`);
-  const bytes=task.rgba.slice().buffer;
   try{
-    const result=await state.client.request('convert',{id:task.id,name:stem(task.name),width:task.width,height:task.height,rgba:bytes,options:convertOptions(),blocks:selectionPayload()},[bytes]);
-    if(!result.rgba)throw new Error('转换核心未返回图像预览。');
-    task.converted={...result,width:result.width||task.width,height:result.height||task.height};task.stale=false;task.built=null;task.buildStale=true;task.conversionSerial=(task.conversionSerial||0)+1;
+    const {entry,hit}=await conversionHistory.ensure(descriptor,async id=>{
+      const bytes=task.rgba.slice().buffer;
+      return state.client.request('convert',{id,name:stem(task.name),width:descriptor.width,height:descriptor.height,rgba:bytes,options:descriptor.options,blocks:descriptor.blocks},[bytes]);
+    },{force,nativeResident:nativeResultResident});
+    adoptConversion(task,entry);
+    const result=entry.result;
+    if(hit)status(`已复用 ${entryLabel(entry)} 的转化结果。`);
     if(result.stats?.colors!=null)$('palette-note').textContent=`当前引擎颜色表：${result.stats.colors} 种可用地图颜色。`;
     if(state.active===task.id)renderPreview();return task.converted;
   }catch(error){task.error=error.message;throw error;}finally{task.processing=false;renderQueue();}
@@ -356,7 +444,8 @@ async function ensureBuilt(task,force=false) {
   if(!force&&task.built&&!task.buildStale)return task.built;
   if(radio('map-type')==='file')throw new Error('纯文件地图画无需构建三维结构，请导出地图数据。');
   task.processing=true;task.error=null;renderQueue();status(`构建 ${task.name}`);
-  try{task.built=await state.client.request('build',{id:task.id,options:buildOptions()});task.buildStale=false;if(state.active===task.id)renderBuild();return task.built;}
+  task.buildStale=true;task.built=null;
+  try{task.built=await conversionHistory.build(task.conversionEntry,buildOptions(),(_id,options)=>requestVariant(task.conversionEntry,'build',{options}),{force});task.buildStale=false;if(state.active===task.id)renderBuild();return task.built;}
   catch(error){task.error=error.message;throw error;}finally{task.processing=false;renderQueue();}
 }
 async function runOperation(tasks,phase,action,finishMessage) {
@@ -380,6 +469,7 @@ function setProgress(percent,message) {
   $(prefix+'-progress').value=Math.max(0,Math.min(100,percent));$(prefix+'-progress-text').textContent=message||`${Math.round(percent)}%`;
 }
 function progressUpdate(progress={}) {
+  if(progress.stage==='cacheWarning')state.nativeCacheAvailable=false;
   const stageLabels={convert:'正在转化图像',build:'正在构建三维结构',export:'正在生成导出文件',palette:'正在读取当前颜色表',testBlocklist:'正在生成方块列表测试文件',loadBlocklist:'正在读取方块列表',ready:'多线程引擎已就绪',loading:'正在加载计算核心'};
   const message=progress.message||progress.status||stageLabels[progress.stage]||progress.stage||'计算中';
   if(!state.ready){status(message);const el=$('runtime-alert').querySelector('p');if(el)el.textContent=message;return;}
@@ -429,7 +519,7 @@ function renderMapRanges() {
   state.commandPreviewTimer=setTimeout(async()=>{
     if(state.busy||sequence!==state.commandPreviewSequence)return;
     try{
-      const result=await state.client.request('export',{id:task.id,format:'commands',options:exportOptions(task,'commands')});
+      const result=await requestVariant(task.conversionEntry,'export',{format:'commands',options:exportOptions(task,'commands')});
       const file=result.files?.[0];if(!file)throw new Error('核心未生成命令。');
       const commandText=new TextDecoder().decode(file.data);task.commandPreview={key,text:commandText};
       if(sequence===state.commandPreviewSequence)$('map-commands').value=commandText;
@@ -451,7 +541,7 @@ async function exportTasks(tasks,format=radio('export-format')) {
   const files=[];
   await runOperation(tasks,'export',async(task)=>{
     if(['map','commands','assembled'].includes(format))await ensureConverted(task);else await ensureBuilt(task);
-    const result=await state.client.request('export',{id:task.id,format,options:exportOptions(task,format)});
+    const result=await requestVariant(task.conversionEntry,'export',{format,options:exportOptions(task,format)});
     for(const file of result.files||[]){
       const name=format==='commands'?file.name.replace(/\.mcfunction$/i,'.txt'):file.name;
       files.push({...file,name:tasks.length>1?`${safeName(stem(task.name))}/${name}`:name});
@@ -481,7 +571,7 @@ function resizeRatio(sourceId) {
   if(sourceId==='resize-width')$('resize-height').value=Math.max(1,Math.round(Number(value('resize-width'))*rect.h/rect.w));
   else $('resize-width').value=Math.max(1,Math.round(Number(value('resize-height'))*rect.w/rect.h));
 }
-function invalidateTask(task) {task.converted=null;task.built=null;task.stale=false;task.buildStale=true;task.error=null;releaseNative(task.id);renderQueue();renderPreview();renderBuild();renderMapRanges();}
+function invalidateTask(task) {conversionHistory.removeTask(task.id);task.imageRevision=crypto.randomUUID();task.conversionEntry=null;task.converted=null;task.built=null;task.stale=false;task.buildStale=true;task.error=null;renderQueue();renderPreview();renderBuild();renderMapRanges();}
 async function applyResize() {
   const task=activeTask(),{x,y,w,h}=cropRect(),width=Math.trunc(number('resize-width',1,16384)),height=Math.trunc(number('resize-height',1,16384));
   if(width*height>67108864)throw new Error('输出图像不得超过 6700 万像素。');
@@ -595,12 +685,18 @@ async function importBlocklist(file) {
   const blocks=(imported.blocks||[]).map(b=>({...b,group}));
   if(!blocks.length)throw new Error('核心未返回自定义方块，请检查 ZIP 是否包含 block_list.json 和图标。');
   state.blocks.push(...blocks);state.groups.push({name:group,blocks});state.enabledGroups.add(group);
+  conversionHistory.clear();state.paletteRevision++;
   state.preset='custom';renderBlocklistChoices();invalidateConversion();renderBlocks();persist();notify(`已导入 ${blocks.length} 个方块。刷新后需重新导入该 ZIP。`);
   if(imported.warnings)notify(imported.warnings,true);
 }
 
 function applyMetadata(metadata={}) {
   state.metadata=metadata;
+  const range=memoryBudgetRange(metadata),budget=$('memory-budget');
+  budget.min=range.min;
+  if(range.max<Number.MAX_SAFE_INTEGER)budget.max=range.max;else budget.removeAttribute('max');
+  if(Number.isSafeInteger(Number(metadata.memoryBudgetMB)))budget.value=metadata.memoryBudgetMB;
+  $('memory-budget-hint').textContent=`计算预算 ${range.min}–${range.max<Number.MAX_SAFE_INTEGER?formatNumber(range.max):'由引擎确定'} MiB${metadata.memory64?' · 64 位内存寻址':''}。这是任务估算限制；实际可用内存取决于浏览器和设备。`;
   const versions=metadata.versions||metadata.gameVersions||[];
   for(const item of versions){
     const val=String(typeof item==='number'?item:item.value??item.version??'');if(!val||$$('#game-version option').some(option=>option.value===val))continue;
@@ -630,6 +726,7 @@ async function clearCache() {
   $('cache-stats').textContent = '正在清除缓存…';
   try {
     const result = await state.client.request('cacheClear');
+    state.nativeCacheAvailable=true;
     invalidateNativeResults(Array.isArray(result.clearedIds) ? result.clearedIds : []);
     await refreshCacheStats();
     notify('缓存已清理，后续导出会自动重新计算。');
@@ -649,7 +746,10 @@ async function initializeEngine({reuseClient = false, startedAt = performance.no
   const client=state.client;
   recordStartupTimings({...uiTimings, phase:'loading'});
   try{
-    const threads=Math.trunc(number('thread-count',2,8)),memoryBudgetMB=Math.trunc(number('memory-budget',128,3072));
+    const range=memoryBudgetRange(state.metadata);
+    const threads=Math.trunc(number('thread-count',2,8)),memoryBudgetMB=Math.trunc(number('memory-budget',range.min,range.max));
+    state.appliedCacheEnabled=checked('cache-enabled');state.nativeCacheAvailable=true;
+    conversionHistory.setNativeLimit(memoryBudgetMB*1048576/2);
     const engineRequestedAt = performance.now();
     const result=await client.init({threads,memoryBudgetMB,cacheEnabled:checked('cache-enabled')});
     if(state.client!==client)return;
@@ -657,8 +757,10 @@ async function initializeEngine({reuseClient = false, startedAt = performance.no
     if(result.groups?.length)state.groups=result.groups;
     if(result.baseColors?.length)state.baseColors=result.baseColors;
     applyMetadata(result.metadata);
+    conversionHistory.setNativeLimit(Number(result.metadata?.memoryBudgetMB||memoryBudgetMB)*1048576/2);
     state.ready=true;$('runtime-alert').classList.add('ready');$('engine-status').classList.add('ready');$('engine-status').lastChild.textContent='多线程引擎就绪';$('thread-status').textContent=`${result.threads||threads} 个计算线程`;
     if(state.pendingSaved){restoreSettings(state.pendingSaved);state.pendingSaved=null;}
+    if(Number.isSafeInteger(Number(result.metadata?.memoryBudgetMB)))$('memory-budget').value=result.metadata.memoryBudgetMB;
     renderBlocks();renderBlocklistChoices();updateButtons();status('多线程引擎已就绪。添加图像开始转化。');
     recordStartupTimings({...uiTimings, ...result.startupTimings, phase:'ready',
       engineRequestMs:performance.now()-engineRequestedAt, pageTotalMs:performance.now()-startedAt});
@@ -669,7 +771,7 @@ async function initializeEngine({reuseClient = false, startedAt = performance.no
     $('runtime-alert').classList.add('error');$('runtime-alert').querySelector('strong').textContent='多线程引擎暂不可用';$('runtime-alert').querySelector('p').textContent=error.message;
     $('engine-status').classList.add('error');$('engine-status').lastChild.textContent='引擎未就绪';status(error.message);console.error(error);updateButtons();
   }
-  $('runtime-details').textContent=`安全上下文：${globalThis.isSecureContext?'是':'否'}\n跨源隔离：${globalThis.crossOriginIsolated?'是':'否'}\nSharedArrayBuffer：${typeof SharedArrayBuffer!=='undefined'?'可用':'不可用'}\n逻辑处理器：${navigator.hardwareConcurrency||'未知'}`;
+  $('runtime-details').textContent=`安全上下文：${globalThis.isSecureContext?'是':'否'}\n跨源隔离：${globalThis.crossOriginIsolated?'是':'否'}\nSharedArrayBuffer：${typeof SharedArrayBuffer!=='undefined'?'可用':'不可用'}\n逻辑处理器：${navigator.hardwareConcurrency||'未知'}\n内存寻址：${state.metadata.pointerBits||state.metadata.addressBits||'—'} 位${state.metadata.memory64?'（Memory64）':''}\n共享内存上限：${state.metadata.memoryMaxMiB?`${formatNumber(state.metadata.memoryMaxMiB)} MiB`:'—'}`;
 }
 function wireEvents() {
   for(const button of $$('[data-tab],[data-goto]'))button.addEventListener('click',()=>setTab(button.dataset.tab||button.dataset.goto));
@@ -678,6 +780,11 @@ function wireEvents() {
   $('settings-button').addEventListener('click',refreshCacheStats);
   $('refresh-cache').addEventListener('click',refreshCacheStats);
   $('clear-cache').addEventListener('click',()=>clearCache().catch(handleError));
+  $('clear-history-cache').addEventListener('click',()=>clearConversionHistory());
+  $('clear-conversion-history').addEventListener('click',()=>{const task=activeTask();if(task)clearConversionHistory(task.id);});
+  $('conversion-result').addEventListener('change',event=>chooseConversion(event.target.value));
+  $('comparison-result').addEventListener('change',event=>{const task=activeTask();if(task){task.compareNativeId=event.target.value;renderPreview();}});
+  $('reconvert-current').addEventListener('click',()=>runOperation(activeTask()?[activeTask()]:[],'convert',task=>ensureConverted(task,{force:true}),'重新转化完成').then(()=>{state.preview='converted';renderPreview();}).catch(handleError));
   $('get-palette').addEventListener('click',()=>getPalette().catch(handleError));
   $('test-blocklist').addEventListener('click',()=>testBlocklist().catch(handleError));
   $('save-palette-png').addEventListener('click',()=>savePalettePng().catch(handleError));
@@ -696,7 +803,7 @@ function wireEvents() {
   for(const id of ['add-image','empty-add'])$(id).addEventListener('click',()=>$('file-input').click());
   $('file-input').addEventListener('change',async event=>{await addFiles(event.target.files);event.target.value='';});
   $('replace-image').addEventListener('click',()=>$('replace-input').click());$('replace-input').addEventListener('change',async event=>{await addFiles(event.target.files,true);event.target.value='';});
-  $('remove-image').addEventListener('click',()=>{if(state.busy)return;for(const task of selectedTasks())releaseNative(task.id);state.tasks=state.tasks.filter(task=>!state.selected.has(task.id));state.selected.clear();state.active=state.tasks[0]?.id||null;if(state.active)state.selected.add(state.active);renderQueue();renderPreview();renderBuild();renderMapRanges();updateButtons();});
+  $('remove-image').addEventListener('click',()=>{if(state.busy)return;for(const task of selectedTasks())conversionHistory.removeTask(task.id);state.tasks=state.tasks.filter(task=>!state.selected.has(task.id));state.selected.clear();state.active=state.tasks[0]?.id||null;if(state.active)state.selected.add(state.active);renderQueue();renderPreview();renderBuild();renderMapRanges();updateButtons();});
   $('export-select-all').addEventListener('click',()=>{state.selected=new Set(state.tasks.map(task=>task.id));state.active||=state.tasks[0]?.id;renderQueue();updateButtons();});
   $('resize-image').addEventListener('click',openResize);$('apply-resize').addEventListener('click',()=>applyResize().catch(handleError));
   for(const id of ['crop-x','crop-y','crop-width','crop-height'])$(id).addEventListener('input',()=>{drawCropPreview();if(id.includes('width')||id.includes('height'))resizeRatio('resize-width');});
@@ -724,7 +831,7 @@ function wireEvents() {
   $('reset-settings').addEventListener('click',()=>{localStorage.removeItem('slopecraft-web:settings:v1');location.reload();});
   $('apply-settings').addEventListener('click',()=>{persist();$('settings-dialog').close();initializeEngine();});
   $('import-blocklist').addEventListener('click',()=>$('blocklist-input').click());$('blocklist-input').accept='.zip,application/zip';$('blocklist-input').addEventListener('change',async event=>{try{await importBlocklist(event.target.files[0]);}catch(error){handleError(error);}event.target.value='';});
-  $('clear-custom-blocklists').addEventListener('click',()=>{const names=new Set(state.groups.filter(g=>g.name.startsWith('用户-')).map(g=>g.name));state.blocks=state.blocks.filter(b=>!names.has(b.group));state.groups=state.groups.filter(g=>!names.has(g.name));for(const name of names)state.enabledGroups.delete(name);normalizeSelections();markCustom();invalidateConversion();renderBlocks();renderBlocklistChoices();persist();notify('已清除导入的方块列表。');});
+  $('clear-custom-blocklists').addEventListener('click',()=>{conversionHistory.clear();state.paletteRevision++;const names=new Set(state.groups.filter(g=>g.name.startsWith('用户-')).map(g=>g.name));state.blocks=state.blocks.filter(b=>!names.has(b.group));state.groups=state.groups.filter(g=>!names.has(g.name));for(const name of names)state.enabledGroups.delete(name);normalizeSelections();markCustom();invalidateConversion();renderBlocks();renderBlocklistChoices();persist();notify('已清除导入的方块列表。');});
   let dragDepth=0;
   window.addEventListener('dragenter',event=>{if(event.dataTransfer?.types.includes('Files')){event.preventDefault();dragDepth++;$('drop-overlay').hidden=false;}});
   window.addEventListener('dragover',event=>{if(event.dataTransfer?.types.includes('Files'))event.preventDefault();});

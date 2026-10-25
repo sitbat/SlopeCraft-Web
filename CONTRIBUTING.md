@@ -31,7 +31,7 @@ From the repository root on a POSIX shell:
 # Set EMSDK to the absolute SDK directory you installed.
 project_node="$(command -v node)"
 source "$EMSDK/emsdk_env.sh"
-export SC_BUILD_DIR=build/web
+export SC_BUILD_DIR=build/web64
 "$project_node" web/scripts/build-wasm.mjs
 "$project_node" web/scripts/prepare-assets.mjs
 "$project_node" --test web/tests/*.test.mjs
@@ -75,6 +75,36 @@ failure/retry behavior. Browser timing measurements must identify the environmen
 and separate download/decompression/verification from initialization; compressed
 file-size reduction alone is not evidence of a browser-startup speedup.
 
+## Memory64 and conversion history
+
+The shipped engine uses real Memory64 with SIMD and pthreads and a 16 GiB shared
+linear-memory maximum. The default build directory is `build/web64`. Preserve
+BigInt pointers across the ABI and check lengths/offsets before making JavaScript
+views; do not truncate to 32 bits or pass an oversized backing view into UTF-8
+decoding. No wasm32 or single-thread fallback is provided.
+
+Memory metadata supplies the UI budget range, currently 128–16384 MiB with a
+1536 MiB default. This is a per-task estimate threshold, not an overall-heap
+hard cap or a guarantee of physical memory. Validate actual allocation and
+pthread access above 4 GiB, high-address preview copying, strict browser-style
+UTF-8 decoding and ordinary conversion/export semantics. Metadata flags alone
+do not prove Memory64 works in a browser.
+
+The upstream desktop program already cached algorithm results per image. Web
+result selection and independent side-by-side comparison are additional UI
+features. Keys must cover source revision, every conversion option, game
+version, palette identity and selected blocks. Route construction and exports
+through the selected variant native ID. Verify matching hits, force recompute,
+failed recompute/builds, image replacement, cache-cleared ID mapping and engine
+reload invalidation without deleting source images.
+
+Preserve separate quotas: at most 24 LRU results and 256 MiB of actual RGBA
+previews; native results successfully released to IndexedDB cost no resident
+estimate, while unreleased native images/structures have a separate estimated
+limit of half the applied budget. A single oversized result retains only the
+newest entry. Test all seven algorithms with both dithering states on a normal
+image, cache failure/recovery and selected-variant export after snapshot restore.
+
 ## Validation
 
 The tests load the real pthread Wasm artifact. A missing compiled core fails the
@@ -87,7 +117,7 @@ checks with tests that merely repeat implementation details.
 Browser checks remain necessary for input decoding, worker startup, UI behavior,
 downloads and IndexedDB. `node web/scripts/preview.mjs` starts the optional local
 development preview. Production hosting configuration belongs to the deployer.
-The port ships a pthread/SIMD build; do not introduce a single-thread fallback.
+The port ships a Memory64/pthread/SIMD build; do not introduce a wasm32 or single-thread fallback.
 
 Validate both browser startup paths separately: an already-isolated page starts
 directly, while a plain HTTPS static origin may use the same-directory Service
@@ -103,7 +133,11 @@ Node tests alone do not verify this navigation/reload lifecycle or a cloud setup
 
 Use `node web/tests/benchmark.mjs` for a reproducible Node measurement. Identify
 the runtime, hardware, fixture and compiled artifact when reporting performance.
-Node results do not establish browser or mobile performance.
+Node results do not establish browser or mobile performance. The currently
+committed `web/test-results/benchmark-node.json` records the previous wasm32
+artifact and its hash. Treat it as historical evidence; regenerate against the
+current artifact before reporting Memory64 performance, without reusing those
+old timing values.
 
 ## CI and release artifacts
 

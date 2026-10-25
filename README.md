@@ -4,7 +4,7 @@
 
 [项目源码](https://github.com/sitbat/SlopeCraft-Web)
 
-在浏览器中制作 Minecraft 地图画的纯静态网页应用。基于 [SlopeCraft](https://github.com/SlopeCraft/SlopeCraft) 5.4.1，保留原 C++ 转换、三维构建和文件导出算法，以 WebAssembly SIMD 和 pthreads 运行。
+在浏览器中制作 Minecraft 地图画的纯静态网页应用。基于 [SlopeCraft](https://github.com/SlopeCraft/SlopeCraft) 5.4.1，保留原 C++ 转换、三维构建和文件导出算法，以 WebAssembly Memory64、SIMD 和 pthreads 运行。
 
 部署时只需静态文件托管；图像处理和计算在浏览器中完成，不需要计算后端、账号或数据库服务器。这是从 Web 初始源码快照建立的独立仓库，Git 历史从该快照开始，不继承上游提交历史。仓库仅包含 Web 应用、其所需的 C++ 组件和资源。原作者为 **TokiNoBug 与 SlopeCraft 贡献者**，版权与 GPL 声明保留，原桌面项目文档见[上游归档](docs/upstream/README.zh-CN.md)，来源基准见 [UPSTREAM.md](UPSTREAM.md)。
 
@@ -13,12 +13,14 @@
 ## 功能
 
 - **地图画配置**：立体、平面、纯文件模式；Java 1.12–1.21、26.1.2、26.2；原版与附加方块列表、原程序四套预设、逐基色选块、自定义 ZIP 方块包及预设导入导出。
-- **图像与转换**：批量导入、拖放和粘贴，裁切、缩放、透明像素处理；RGB、RGB+、HSV、XYZ、Lab94、Lab00、遗传算法与抖动；原图、结果和对照预览。
+- **图像与转换**：批量导入、拖放和粘贴，裁切、缩放、透明像素处理；RGB、RGB+、HSV、XYZ、Lab94、Lab00、遗传算法与抖动；原图、结果和对照预览；保存多种算法结果、切回历史配置和并排算法对比。
 - **构建与材料**：无损／有损压缩、最大高度、搭桥、辅助方块、防火、防末影人、蘑菇连接；压缩效果、材料表与 CSV。
 - **导出**：Litematica、原版结构 NBT、WorldEdit 原理图、平面施工图、地图数据文件、获得地图的命令和展示框组装结构；批量结果自动打包 ZIP。
 - **工具与缓存**：真实当前颜色表 PNG／CSV、方块列表测试结构；IndexedDB 计算结果缓存、缓存统计与清理、内存预算和本地设置保存。
 
-修改图像或配置后，旧结果会失效，导出时自动重新计算。计算缓存用于降低当前项目池的内存占用，**刷新页面不会恢复图像项目池**；关闭前请导出所需文件并另存原图。
+原桌面程序已有按图像与算法保存计算结果的缓存；Web 版增加结果选择、独立并排对比和对应结果导出。结果键包含图像版本、完整转化配置及方块选择，切回相同配置可复用结果；修改原图、清理对应缓存或重载引擎后，导出会按需重新计算。
+
+对比结果按 LRU 最多保留 24 项，RGBA 预览合计上限 256 MiB。自动缓存成功后，原生快照写入 IndexedDB 并释放计算内存；未释放的原生结果另按估算占用限制为已应用预算的一半。超限清理旧项，单个超大结果只保留最新项。**刷新页面不会恢复图像项目池**；关闭前请导出所需文件并另存原图。
 
 ## 本地运行
 
@@ -35,7 +37,7 @@ npm run preview
 
 当前通过源码方式预览，或按下文“从源码构建引擎”生成静态文件。将生成的 **`web/dist/` 全部内容**作为同一站点的静态文件托管。打包脚本还会在仓库的上一级目录生成 `SlopeCraft-Web-static.zip`。支持站点根目录或子目录，运行时资源使用相对 URL，不依赖 CDN；部署运行不需要 Node、Python、Qt 或 Emscripten。
 
-浏览器需支持 WebAssembly SIMD、Web Worker 和 SharedArrayBuffer，并在启动引擎前满足 `crossOriginIsolated === true`。正式部署使用 **HTTPS 安全上下文**；本地开发可使用 localhost／回环地址。
+浏览器需支持 WebAssembly Memory64、共享的 64 位线性内存、SIMD、Web Worker 和 SharedArrayBuffer，并在启动引擎前满足 `crossOriginIsolated === true`。正式部署使用 **HTTPS 安全上下文**；本地开发可使用 localhost／回环地址。
 
 启动流程支持两种隔离方式：
 
@@ -46,11 +48,11 @@ npm run preview
 
 服务器响应头仍可作为替代方式：`Cross-Origin-Opener-Policy: same-origin` 和 `Cross-Origin-Embedder-Policy: require-corp`。在支持并允许 Service Worker 的 HTTPS 环境中，静态启动流程可自动补齐这些响应头，无需专门修改云服务器的隔离配置；生产网络、证书、访问控制和服务器配置仍由部署者负责。
 
-**仅提供多线程引擎，没有单线程回退。** HTTPS 本身不等于隔离成功；如果 Worker 注册、接管或隔离检查未完成，页面会显示实际状态，而不会提前宣称引擎已就绪。
+**仅提供 Memory64 多线程引擎，没有 wasm32 或单线程回退。** HTTPS 本身不等于隔离成功；如果 Worker 注册、接管或隔离检查未完成，页面会显示实际状态，而不会提前宣称引擎已就绪。
 
 ## 压缩与并行启动
 
-静态包同时保留原始多线程 WASM 和预生成的 gzip 文件。当前原文件为 **1,834,985 字节**，gzip 为 **624,441 字节**，文件大小减少 **66.0%**；这一比例不是浏览器启动耗时的测量结果。
+静态包同时保留原始多线程 WASM 和预生成的 gzip 文件。当前原文件为 **1,915,266 字节**，gzip 为 **644,629 字节**，文件大小减少 **66.3%**；这一比例不是浏览器启动耗时的测量结果。
 
 浏览器把 `wasm/slopecraft.wasm.gz` 当作普通静态文件请求，使用原生 `DecompressionStream` 解压；若服务器已经按 `Content-Encoding` 自动解压，则按实际 WASM 字节识别并直接使用，避免重复解压。解压后的字节数和 SHA-256 必须与 `wasm/wasm-integrity.js` 一致。缺少解压支持，或 gzip 下载、格式、完整性检查失败时，只回退到同一多线程引擎的原始 `slopecraft.wasm`，仍执行完整性校验。
 
@@ -73,7 +75,7 @@ node web/scripts/check-static.mjs
 
 Web 构建入口是 [`web/CMakeLists.txt`](web/CMakeLists.txt)。依赖版本与下载哈希记录在 [`web/dependency-lock.json`](web/dependency-lock.json)，下载发生在构建阶段。Web 构建不需要 Qt 或原生 OpenMP。
 
-默认构建目录为 `build/web`，可用 `SC_BUILD_DIR` 调整，`SC_BUILD_JOBS` 控制编译并行度。`package-dependencies.mjs` 从同一构建目录收集对应依赖源码与许可证，再由 `npm run build` 打包；生成的依赖源码目录和 `web/dist/` 不纳入 Git。
+默认构建目录为 `build/web64`，可用 `SC_BUILD_DIR` 调整，`SC_BUILD_JOBS` 控制编译并行度。`package-dependencies.mjs` 从同一构建目录收集对应依赖源码与许可证，再由 `npm run build` 打包；生成的依赖源码目录和 `web/dist/` 不纳入 Git。
 
 打包产物包含修改版项目源码、对应依赖源码和许可证。完整使用与构建细节见 [`web/README.md`](web/README.md)，第三方组件见 [`web/THIRD_PARTY_NOTICES.md`](web/THIRD_PARTY_NOTICES.md)。
 
@@ -86,13 +88,13 @@ node web/scripts/check-static.mjs
 node web/tests/benchmark.mjs
 ```
 
-静态文件校验需先执行 `npm run build`。测试加载真实的多线程 WASM，不用 JavaScript 近似算法替代。当前保存的验收记录为 **156 项测试通过**，覆盖算法、并行工作计数、地图分割、结构语义、透明策略、方块图标与原生缓存。详见[功能核对表](web/tests/parity-checklist.md)和[验收记录](web/test-results/verification.json)。
+静态文件校验需先执行 `npm run build`。测试加载真实的多线程 WASM，不用 JavaScript 近似算法替代。当前完整套件 **172 项测试通过**，覆盖算法、并行工作计数、地图分割、结构语义、透明策略、方块图标、原生快照、多结果缓存及 Memory64 高地址访问。详见[功能核对表](web/tests/parity-checklist.md)和[验收记录](web/test-results/verification.json)。
 
-浏览器已在 Windows Chromium 环境验收导入、转换、构建、材料、下载、缓存和 390／633／1280 像素宽度布局。响应式视口测试不代表手机真机测试；Node 基准不代表浏览器性能。导出文件经过独立格式解析，尚未逐种在 Minecraft 内导入验收。
+浏览器已在 Windows Chromium 环境验收导入、转换、构建、材料、下载、缓存和 390／633／1280 像素宽度布局。Node 与真实浏览器均已验证超过 4 GiB 的实际内存地址、预览读取和四线程计算；这不等于完成 16 GiB 实物数据或设备内存压力测试，也不代表所有浏览器都支持 Memory64。响应式视口测试不代表手机真机测试；现存 `benchmark-node.json` 属于旧 wasm32 构建的历史记录，不能作为 Memory64 或浏览器性能证据。导出文件经过独立格式解析，尚未逐种在 Minecraft 内导入验收。
 
 - 功能范围为 **SlopeCraft 主程序的 Web 移植**；VisualCraft、独立 MapViewer、独立 imageCutter 未迁移，其桌面程序源码也不包含在本仓库中。网页内提供裁切和缩放。
 - 浏览器文件选择、下载和存储替代任意本地路径操作；界面目前为中文，没有桌面自动更新和系统内存探测。
-- 保留原稠密三维矩阵。默认计算预算 1536 MiB，可设为 128–3072 MiB；这是预检查阈值，不保证浏览器能分配相应内存。大图应缩小或拆分。
+- 保留原稠密三维矩阵。当前 Memory64 构建的共享线性内存上限为 16 GiB；计算预算默认 1536 MiB，可设为 128–16384 MiB，界面范围由引擎元数据提供。预算是单次任务的估算预检查阈值，不是总堆硬上限或可用物理内存承诺；原图、预览等 JavaScript 内存另计。大图仍可能需要缩小或拆分。
 - “停止后续任务”在当前 C++ 调用结束后停止队列，不会强制中断当前计算。
 - WorldEdit 导出不支持 Java 1.12；平面施工图仅支持平面地图画。
 
